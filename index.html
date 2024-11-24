@@ -3,12 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Audio Call</title>
+    <title>Professional Video Call</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .gradient-bg {
             background: linear-gradient(130deg, #1a1a1a 0%, #2d3436 100%);
+        }
+        .video-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            height: calc(100vh - 8rem);
+            /* padding: 1rem; */
+        }
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            /* height: 100%; */
+            /* min-height: 300px; */
+            border-radius: 1rem;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .video-wrapper video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-wrapper.active {
+            border: 2px solid #4CAF50;
         }
         .controls {
             position: fixed;
@@ -17,15 +42,15 @@
             transform: translateX(-50%);
             display: flex;
             gap: 1rem;
-            padding: 1rem;
-            background: rgba(0, 0, 0, 0.8);
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.311);
             border-radius: 1rem;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
+            z-index: 20000;
         }
         .control-button {
-            width: 3.5rem;
-            height: 3.5rem;
+            width: 2.5rem;
+            height: 2.5rem;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -35,6 +60,26 @@
         }
         .control-button:hover {
             transform: scale(1.1);
+        }
+        .status-badge {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 0.875rem;
+        }
+        .user-label {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 0.875rem;
         }
         .room-id {
             position: fixed;
@@ -58,29 +103,103 @@
             display: none;
             z-index: 1000;
         }
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        #localVideo {
+    position: fixed;
+    bottom: 20px;  /* Adjust this value for the vertical distance from the bottom */
+    right: 20px;   /* Adjust this value for the horizontal distance from the right */
+    width: 150px;  /* You can adjust the size of the video */
+    height: 150px; /* You can adjust the size of the video */
+    border-radius: 10px;  /* Optional: to add rounded corners */
+    z-index: 9999;   /* Ensures the video stays on top of other content */
+}
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 640px) {
+            .video-container {
+                grid-template-columns: 1fr;
+                height: calc(100vh - 6rem);
+            }
+            .video-wrapper {
+                min-height: 200px;
+            }
+            .controls {
+                padding: 5px;
+                gap: 0.5rem;
+            }
+            .control-button {
+                width: 2rem;
+                height: 2rem;
+            }
+
+        }
     </style>
 </head>
 <body class="gradient-bg min-h-screen overflow-hidden">
     <div id="roomIdDisplay" class="room-id">
         Room ID: <span id="roomId"></span>
         <button id="copyRoom" class="ml-2 text-blue-400 hover:text-blue-300">
-            <i class="fas fa-copy"></i>
+            <i class="fa-regular fa-copy" style="color: greenyellow;"></i>
         </button>
+    </div>
+
+    <div class="video-container">
+
+            <video id="localVideo" autoplay playsinline muted></video>
+            <div id="localStatus" class="status-badge">
+                <i class="fas fa-circle text-green-500"></i> 
+            </div>
+
+        <div class="video-wrapper" style="border-radius: 0;">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div class="user-label">Remote User</div>
+            <div id="remoteStatus" class="status-badge">
+                <i class="fas fa-circle text-gray-500"></i> Waiting
+            </div>
+        </div>
     </div>
 
     <div class="controls">
         <button id="joinRoom" class="control-button bg-blue-600 hover:bg-blue-700">
-            <i class="fas fa-door-open"></i>
+            <i class="fa-solid fa-key" style="color: white;"></i>
+        </button>
+        <button id="toggleVideo" class="control-button bg-gray-700 hover:bg-gray-600">
+            <i class="fas fa-video" style="color: white;"></i>
         </button>
         <button id="toggleAudio" class="control-button bg-gray-700 hover:bg-gray-600">
-            <i class="fas fa-microphone"></i>
+            <i class="fas fa-microphone" style="color: white;"></i>
         </button>
         <button id="endCall" class="control-button bg-red-600 hover:bg-red-700">
-            <i class="fas fa-phone-slash"></i>
+            <i class="fas fa-phone-slash" style="color: white;"></i>
         </button>
     </div>
 
     <div id="toast"></div>
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+    </div>
 
     <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
@@ -108,20 +227,44 @@
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'turn:numb.viagenie.ca', username: 'webrtc@live.com', credential: 'muazkh' },
-                { urls: 'turn:turn.anyfirewall.com:443?transport=tcp', username: 'webrtc', credential: 'webrtc' }
-            ]
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' },
+                {
+                    urls: 'turn:numb.viagenie.ca',
+                    username: 'webrtc@live.com',
+                    credential: 'muazkh'
+                },
+                {
+                    urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
+                    username: 'webrtc',
+                    credential: 'webrtc'
+                }
+            ],
+            iceCandidatePoolSize: 10,
         };
 
+        // Global variables
         let peerConnection;
         let localStream;
+        let screenStream;
         let currentRoom;
+        let isVideoEnabled = true;
+        let isAudioEnabled = true;
+        // let isScreenSharing = false;
 
-        const joinRoomBtn = document.getElementById('joinRoom');
+        // DOM Elements
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const toggleVideoBtn = document.getElementById('toggleVideo');
         const toggleAudioBtn = document.getElementById('toggleAudio');
+        const toggleScreenBtn = document.getElementById('toggleScreen');
+        const joinRoomBtn = document.getElementById('joinRoom');
         const endCallBtn = document.getElementById('endCall');
         const roomIdDisplay = document.getElementById('roomId');
         const copyRoomBtn = document.getElementById('copyRoom');
+        const loadingElement = document.getElementById('loading');
+        const remoteStatus = document.getElementById('remoteStatus');
 
         // Toast notification function
         function showToast(message, duration = 3000) {
@@ -138,13 +281,20 @@
             return Math.random().toString(36).substring(2, 15);
         }
 
-        // Initialize audio stream
+        // Initialize media stream
         async function initializeStream() {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                loadingElement.style.display = 'flex';
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true
+                });
+                localVideo.srcObject = localStream;
+                loadingElement.style.display = 'none';
             } catch (error) {
-                console.error('Error accessing microphone:', error);
-                showToast('Error accessing microphone. Please check permissions.');
+                console.error('Error accessing media devices:', error);
+                showToast('Error accessing camera/microphone. Please check permissions.');
+                loadingElement.style.display = 'none';
             }
         }
 
@@ -172,6 +322,8 @@
         // Create new room
         async function createRoom(roomId) {
             peerConnection = new RTCPeerConnection(configuration);
+            registerPeerConnectionListeners();
+
             localStream.getTracks().forEach(track => {
                 peerConnection.addTrack(track, localStream);
             });
@@ -189,49 +341,56 @@
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
 
-            await roomRef.set({ offer: { sdp: offer.sdp, type: offer.type } });
+            await roomRef.set({
+                offer: { sdp: offer.sdp, type: offer.type }
+            });
 
             roomRef.child('answer').on('value', async snapshot => {
-                if (snapshot.exists() && snapshot.val().sdp) {
-                    const answer = snapshot.val();
+                const answer = snapshot.val();
+                if (answer && !peerConnection.currentRemoteDescription) {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
                 }
             });
 
             answerCandidates.on('child_added', async snapshot => {
-                try {
-                    const candidate = JSON.parse(snapshot.val());
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (error) {
-                    console.error('Error adding ICE candidate:', error);
-                }
+                const candidate = JSON.parse(snapshot.val());
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
             });
+
+            showToast('Room created! Share the room ID with others to join.');
         }
 
         // Join existing room
         async function joinRoom(roomId) {
+            const roomRef = db.ref(`rooms/${roomId}`);
+            const roomSnapshot = await roomRef.once('value');
+
+            if (!roomSnapshot.exists()) {
+                showToast('Room does not exist!');
+                return;
+            }
+
             peerConnection = new RTCPeerConnection(configuration);
+            registerPeerConnectionListeners();
+
             localStream.getTracks().forEach(track => {
                 peerConnection.addTrack(track, localStream);
             });
 
-            const roomRef = db.ref(`rooms/${roomId}`);
-            const offerSnapshot = await roomRef.child('offer').once('value');
-            const offer = offerSnapshot.val();
-
+            const offer = roomSnapshot.val().offer;
             await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
 
-            await roomRef.child('answer').set({ sdp: answer.sdp, type: answer.type });
+            await roomRef.child('answer').set({
+                type: answer.type,
+                sdp: answer.sdp
+            });
 
             roomRef.child('offerCandidates').on('child_added', async snapshot => {
-                try {
-                    const candidate = JSON.parse(snapshot.val());
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (error) {
-                    console.error('Error adding ICE candidate:', error);
-                }
+                const candidate = JSON.parse(snapshot.val());
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
             });
 
             peerConnection.onicecandidate = event => {
@@ -241,32 +400,206 @@
             };
         }
 
-        // Event listeners
-        joinRoomBtn.addEventListener('click', createOrJoinRoom);
+        // Register peer connection listeners
+        function registerPeerConnectionListeners() {
+            peerConnection.ontrack = event => {
+                remoteVideo.srcObject = event.streams[0];
+                remoteStatus.innerHTML = '<i class="fas fa-circle text-green-500"></i> Connected';
+            };
 
-        toggleAudioBtn.addEventListener('click', () => {
-            const audioTrack = localStream.getAudioTracks()[0];
-            audioTrack.enabled = !audioTrack.enabled;
-            toggleAudioBtn.innerHTML = audioTrack.enabled
-                ? '<i class="fas fa-microphone"></i>'
-                : '<i class="fas fa-microphone-slash"></i>';
+            peerConnection.onconnectionstatechange = () => {
+                // Continuing from the previous registerPeerConnectionListeners function...
+
+            switch (peerConnection.connectionState) {
+                case 'connected':
+                    showToast('Connected to peer!');
+                    remoteStatus.innerHTML = '<i class="fas fa-circle text-green-500"></i> Connected';
+                    break;
+                case 'disconnected':
+                    showToast('Peer disconnected');
+                    remoteStatus.innerHTML = '<i class="fas fa-circle text-red-500"></i> Disconnected';
+                    break;
+                case 'failed':
+                    showToast('Connection failed. Trying to reconnect...');
+                    remoteStatus.innerHTML = '<i class="fas fa-circle text-red-500"></i> Failed';
+                    handleConnectionFailure();
+                    break;
+                case 'closed':
+                    showToast('Connection closed');
+                    remoteStatus.innerHTML = '<i class="fas fa-circle text-gray-500"></i> Closed';
+                    break;
+            }
+        };
+
+        peerConnection.oniceconnectionstatechange = () => {
+            if (peerConnection.iceConnectionState === 'failed') {
+                peerConnection.restartIce();
+            }
+        };
+    }
+
+    // Handle connection failure
+    async function handleConnectionFailure() {
+        try {
+            await peerConnection.restartIce();
+            const offer = await peerConnection.createOffer({ iceRestart: true });
+            await peerConnection.setLocalDescription(offer);
+            
+            if (currentRoom) {
+                await db.ref(`rooms/${currentRoom}/offer`).set({
+                    type: offer.type,
+                    sdp: offer.sdp
+                });
+            }
+        } catch (error) {
+            console.error('Error during connection recovery:', error);
+            showToast('Failed to recover connection. Please rejoin the room.');
+        }
+    }
+
+    // Toggle video
+    toggleVideoBtn.addEventListener('click', () => {
+        isVideoEnabled = !isVideoEnabled;
+        localStream.getVideoTracks().forEach(track => {
+            track.enabled = isVideoEnabled;
         });
+        toggleVideoBtn.innerHTML = isVideoEnabled ? 
+            '<i class="fas fa-video"></i>' : 
+            '<i class="fas fa-video-slash"></i>';
+        toggleVideoBtn.classList.toggle('bg-red-600', !isVideoEnabled);
+        toggleVideoBtn.classList.toggle('bg-gray-700', isVideoEnabled);
+        showToast(`Video ${isVideoEnabled ? 'enabled' : 'disabled'}`);
+    });
 
-        endCallBtn.addEventListener('click', () => {
+    // Toggle audio
+    toggleAudioBtn.addEventListener('click', () => {
+        isAudioEnabled = !isAudioEnabled;
+        localStream.getAudioTracks().forEach(track => {
+            track.enabled = isAudioEnabled;
+        });
+        toggleAudioBtn.innerHTML = isAudioEnabled ? 
+            '<i class="fas fa-microphone"></i>' : 
+            '<i class="fas fa-microphone-slash"></i>';
+        toggleAudioBtn.classList.toggle('bg-red-600', !isAudioEnabled);
+        toggleAudioBtn.classList.toggle('bg-gray-700', isAudioEnabled);
+        showToast(`Audio ${isAudioEnabled ? 'enabled' : 'disabled'}`);
+    });
+
+    // // Toggle screen sharing
+    // toggleScreenBtn.addEventListener('click', async () => {
+    //     try {
+    //         if (!isScreenSharing) {
+    //             screenStream = await navigator.mediaDevices.getDisplayMedia({
+    //                 video: true
+    //             });
+                
+    //             const videoTrack = screenStream.getVideoTracks()[0];
+    //             const sender = peerConnection.getSenders().find(s => 
+    //                 s.track.kind === 'video'
+    //             );
+                
+    //             await sender.replaceTrack(videoTrack);
+    //             localVideo.srcObject = screenStream;
+                
+    //             videoTrack.onended = () => {
+    //                 stopScreenSharing();
+    //             };
+                
+    //             isScreenSharing = true;
+    //             toggleScreenBtn.classList.add('bg-green-600');
+    //             toggleScreenBtn.classList.remove('bg-purple-600');
+    //             showToast('Screen sharing started');
+    //         } else {
+    //             stopScreenSharing();
+    //         }
+    //     } catch (error) {
+    //         console.error('Error during screen sharing:', error);
+    //         showToast('Failed to start screen sharing');
+    //     }
+    // });
+
+    // // Stop screen sharing
+    // async function stopScreenSharing() {
+    //     if (screenStream) {
+    //         screenStream.getTracks().forEach(track => track.stop());
+            
+    //         const videoTrack = localStream.getVideoTracks()[0];
+    //         const sender = peerConnection.getSenders().find(s => 
+    //             s.track.kind === 'video'
+    //         );
+            
+    //         await sender.replaceTrack(videoTrack);
+    //         localVideo.srcObject = localStream;
+            
+    //         isScreenSharing = false;
+    //         toggleScreenBtn.classList.remove('bg-green-600');
+    //         toggleScreenBtn.classList.add('bg-purple-600');
+    //         showToast('Screen sharing stopped');
+    //     }
+    // }
+
+    // End call
+    endCallBtn.addEventListener('click', async () => {
+        try {
             if (peerConnection) {
                 peerConnection.close();
-                peerConnection = null;
             }
-            showToast('Call ended.');
-        });
+            if (currentRoom) {
+                await db.ref(`rooms/${currentRoom}`).remove();
+            }
+            remoteVideo.srcObject = null;
+            remoteStatus.innerHTML = '<i class="fas fa-circle text-gray-500"></i> Waiting';
+            showToast('Call ended');
+            currentRoom = null;
+            roomIdDisplay.textContent = '';
+        } catch (error) {
+            console.error('Error ending call:', error);
+            showToast('Error ending call');
+        }
+    });
 
-        copyRoomBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(currentRoom);
-            showToast('Room ID copied to clipboard.');
-        });
+    // Copy room ID
+    copyRoomBtn.addEventListener('click', () => {
+        if (currentRoom) {
+            navigator.clipboard.writeText(currentRoom)
+                .then(() => showToast('Room ID copied to clipboard!'))
+                .catch(() => showToast('Failed to copy room ID'));
+        }
+    });
 
-        // Initialize stream on page load
-        window.onload = initializeStream;
-    </script>
+    // Join room button
+    joinRoomBtn.addEventListener('click', createOrJoinRoom);
+
+    // Network status monitoring
+    window.addEventListener('online', () => {
+        showToast('Internet connection restored');
+        if (peerConnection?.connectionState === 'failed') {
+            handleConnectionFailure();
+        }
+    });
+
+    window.addEventListener('offline', () => {
+        showToast('Internet connection lost');
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (currentRoom) {
+            db.ref(`rooms/${currentRoom}`).remove();
+        }
+        if (peerConnection) {
+            peerConnection.close();
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+        }
+        if (screenStream) {
+            screenStream.getTracks().forEach(track => track.stop());
+        }
+    });
+
+    // Initialize on page load
+    initializeStream();
+</script>
 </body>
 </html>
