@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Video Call</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .call-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .video-wrapper {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+        .video-wrapper video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .controls {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            display: flex;
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .control-button {
+            width: 3.5rem;
+            height: 3.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .control-button:hover {
+            transform: scale(1.05);
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #ffffff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900 text-white">
+    <div class="call-container min-h-screen p-4">
+        <header class="text-center py-6">
+            <h1 class="text-4xl font-bold mb-2">Video Call</h1>
+            <p class="text-gray-200 text-lg">Connect with anyone, anywhere</p>
+        </header>
+
+        <div class="video-grid mb-24">
+            <div class="video-wrapper">
+                <video id="localVideo" autoplay playsinline muted></video>
+                <div class="absolute bottom-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full">
+                    <span class="text-sm">You</span>
+                </div>
+            </div>
+            <div class="video-wrapper">
+                <video id="remoteVideo" autoplay playsinline></video>
+                <div class="absolute bottom-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full">
+                    <span class="text-sm">Remote User</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="toggleVideo" class="control-button bg-gray-700 hover:bg-gray-600">
+                <i class="fas fa-video"></i>
+            </button>
+            <button id="toggleAudio" class="control-button bg-gray-700 hover:bg-gray-600">
+                <i class="fas fa-microphone"></i>
+            </button>
+            <button id="startCall" class="control-button bg-green-600 hover:bg-green-500">
+                <i class="fas fa-phone"></i>
+            </button>
+            <button id="endCall" class="control-button bg-red-600 hover:bg-red-500">
+                <i class="fas fa-phone-slash"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDB_ylrW7hartjCjSAqjjZjUoNSrSX7Et4",
+            authDomain: "blogs-a7325.firebaseapp.com",
+            databaseURL: "https://blogs-a7325-default-rtdb.firebaseio.com",
+            projectId: "blogs-a7325",
+            storageBucket: "blogs-a7325.appspot.com",
+            messagingSenderId: "868013133674",
+            appId: "1:868013133674:web:8ceaa7dfa63ee0d2a0df13",
+            measurementId: "G-RJX09FKMMY"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(app);
+
+        // Elements
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const toggleVideoBtn = document.getElementById('toggleVideo');
+        const toggleAudioBtn = document.getElementById('toggleAudio');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // WebRTC Config
+        const configuration = {
+            iceServers: [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" },
+                { urls: "stun:stun2.l.google.com:19302" }
+            ]
+        };
+        let peerConnection;
+        let localStream;
+
+        // Firebase Paths
+        const callRoom = db.ref('/calls');
+
+        // Media Control States
+        let isVideoEnabled = true;
+        let isAudioEnabled = true;
+
+        // Get Local Stream
+        async function getLocalStream() {
+            try {
+                loadingOverlay.style.display = 'flex';
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localVideo.srcObject = localStream;
+                loadingOverlay.style.display = 'none';
+            } catch (error) {
+                console.error('Error accessing media devices:', error);
+                alert('Failed to access camera and microphone. Please ensure permissions are granted.');
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        // Toggle Video
+        toggleVideoBtn.addEventListener('click', () => {
+            isVideoEnabled = !isVideoEnabled;
+            localStream.getVideoTracks().forEach(track => track.enabled = isVideoEnabled);
+            toggleVideoBtn.innerHTML = isVideoEnabled ? 
+                '<i class="fas fa-video"></i>' : 
+                '<i class="fas fa-video-slash"></i>';
+            toggleVideoBtn.classList.toggle('bg-red-600', !isVideoEnabled);
+            toggleVideoBtn.classList.toggle('bg-gray-700', isVideoEnabled);
+        });
+
+        // Toggle Audio
+        toggleAudioBtn.addEventListener('click', () => {
+            isAudioEnabled = !isAudioEnabled;
+            localStream.getAudioTracks().forEach(track => track.enabled = isAudioEnabled);
+            toggleAudioBtn.innerHTML = isAudioEnabled ? 
+                '<i class="fas fa-microphone"></i>' : 
+                '<i class="fas fa-microphone-slash"></i>';
+            toggleAudioBtn.classList.toggle('bg-red-600', !isAudioEnabled);
+            toggleAudioBtn.classList.toggle('bg-gray-700', isAudioEnabled);
+        });
+
+        // Start Call
+        document.getElementById('startCall').addEventListener('click', async () => {
+            loadingOverlay.style.display = 'flex';
+            try {
+                peerConnection = new RTCPeerConnection(configuration);
+
+                // Add Local Tracks
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                // Set Remote Stream
+                peerConnection.ontrack = event => {
+                    remoteVideo.srcObject = event.streams[0];
+                };
+
+                // Send ICE Candidates
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        callRoom.child('ice').push(JSON.stringify(event.candidate));
+                    }
+                };
+
+                // Create and Send Offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                await callRoom.child('offer').set(JSON.stringify(offer));
+
+                // Listen for Answer
+                callRoom.child('answer').on('value', snapshot => {
+                    if (snapshot.exists() && !peerConnection.remoteDescription) {
+                        const answer = JSON.parse(snapshot.val());
+                        peerConnection.setRemoteDescription(answer);
+                    }
+                });
+
+                // Listen for ICE Candidates
+                callRoom.child('ice').on('child_added', snapshot => {
+                    const candidate = JSON.parse(snapshot.val());
+                    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                });
+
+            } catch (error) {
+                console.error('Error starting call:', error);
+                alert('Failed to start call. Please try again.');
+            }
+            loadingOverlay.style.display = 'none';
+        });
+
+        // Answer Call
+        callRoom.child('offer').on('value', async snapshot => {
+            if (snapshot.exists() && !peerConnection) {
+                loadingOverlay.style.display = 'flex';
+                try {
+                    peerConnection = new RTCPeerConnection(configuration);
+
+                    // Add Local Tracks
+                    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                    // Set Remote Stream
+                    peerConnection.ontrack = event => {
+                        remoteVideo.srcObject = event.streams[0];
+                    };
+
+                    // Send ICE Candidates
+                    peerConnection.onicecandidate = event => {
+                        if (event.candidate) {
+                            callRoom.child('ice').push(JSON.stringify(event.candidate));
+                        }
+                    };
+
+                    // Set Remote Offer and Create Answer
+                    const offer = JSON.parse(snapshot.val());
+                    await peerConnection.setRemoteDescription(offer);
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    await callRoom.child('answer').set(JSON.stringify(answer));
+
+                } catch (error) {
+                    console.error('Error answering call:', error);
+                    alert('Failed to answer call. Please try again.');
+                }
+                loadingOverlay.style.display = 'none';
+            }
+        });
+
+        // End Call
+        document.getElementById('endCall').addEventListener('click', async () => {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            remoteVideo.srcObject = null;
+            await callRoom.remove();
+        });
+
+        // Initialize
+        getLocalStream();
+
+        // Connection Status
+        window.addEventListener('online', () => {
+            console.log('Connection restored');
+        });
+
+        window.addEventListener('offline', () => {
+            alert('Internet connection lost. Please check your connection.');
+        });
+    </script>
+</body>
+</html>
