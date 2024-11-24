@@ -3,49 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Video Call</title>
+    <title>Professional Video Call</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .call-container {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .gradient-bg {
+            background: linear-gradient(130deg, #1a1a1a 0%, #2d3436 100%);
         }
-        .video-grid {
+        .video-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1rem;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
+            height: calc(100vh - 8rem);
+            padding: 1rem;
         }
         .video-wrapper {
             position: relative;
-            padding-top: 56.25%; /* 16:9 Aspect Ratio */
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 1rem;
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
+            /* border-radius: 1rem; */
             overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .video-wrapper video {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+        .video-wrapper.active {
+            border: 2px solid #4CAF50;
         }
         .controls {
             position: fixed;
             bottom: 2rem;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 50;
             display: flex;
             gap: 1rem;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
             padding: 1rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background: rgba(0, 0, 0, 0.8);
+            /* border-radius: 1rem; */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
         }
         .control-button {
             width: 3.5rem;
@@ -54,266 +55,149 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.1);
         }
         .control-button:hover {
-            transform: scale(1.05);
+            transform: scale(1.1);
         }
-        .loading-overlay {
+        .status-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 0.875rem;
+        }
+        .user-label {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 0.875rem;
+        }
+        .room-id {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.5rem 1rem;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 0.5rem;
+            color: white;
+            z-index: 1000;
+        }
+        #toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: none;
+            z-index: 1000;
+        }
+        .loading {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 100;
+            z-index: 2000;
         }
-        .loading-spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
             border-radius: 50%;
-            border-top: 4px solid #ffffff;
-            width: 40px;
-            height: 40px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        @media (max-width: 640px) {
+            .video-container {
+                grid-template-columns: 1fr;
+                height: calc(100vh - 6rem);
+            }
+            .video-wrapper {
+                min-height: 200px;
+            }
+            .controls {
+                padding: 0.5rem;
+                gap: 0.5rem;
+            }
+            .control-button {
+                width: 3rem;
+                height: 3rem;
+            }
+        }
     </style>
 </head>
-<body class="min-h-screen bg-gray-900 text-white">
-    <div class="call-container min-h-screen p-4">
-        <header class="text-center py-6">
-            <h1 class="text-4xl font-bold mb-2">Video Call</h1>
-            <p class="text-gray-200 text-lg">Connect with anyone, anywhere</p>
-        </header>
+<body class="gradient-bg min-h-screen overflow-hidden">
+    <div id="roomIdDisplay" class="room-id">
+        Room ID: <span id="roomId"></span>
+        <button id="copyRoom" class="ml-2 text-blue-400 hover:text-blue-300">
+            <i class="fas fa-copy"></i>
+        </button>
+    </div>
 
-        <div class="video-grid mb-24">
-            <div class="video-wrapper">
-                <video id="localVideo" autoplay playsinline muted></video>
-                <div class="absolute bottom-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full">
-                    <span class="text-sm">You</span>
-                </div>
-            </div>
-            <div class="video-wrapper">
-                <video id="remoteVideo" autoplay playsinline></video>
-                <div class="absolute bottom-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full">
-                    <span class="text-sm">Remote User</span>
-                </div>
+    <div class="video-container">
+        <div class="video-wrapper">
+            <video id="localVideo" autoplay playsinline muted></video>
+            <div class="user-label">You</div>
+            <div id="localStatus" class="status-badge">
+                <i class="fas fa-circle text-green-500"></i> Connected
             </div>
         </div>
-
-        <div class="controls">
-            <button id="toggleVideo" class="control-button bg-gray-700 hover:bg-gray-600">
-                <i class="fas fa-video"></i>
-            </button>
-            <button id="toggleAudio" class="control-button bg-gray-700 hover:bg-gray-600">
-                <i class="fas fa-microphone"></i>
-            </button>
-            <button id="startCall" class="control-button bg-green-600 hover:bg-green-500">
-                <i class="fas fa-phone"></i>
-            </button>
-            <button id="endCall" class="control-button bg-red-600 hover:bg-red-500">
-                <i class="fas fa-phone-slash"></i>
-            </button>
+        <div class="video-wrapper">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div class="user-label">Remote User</div>
+            <div id="remoteStatus" class="status-badge">
+                <i class="fas fa-circle text-gray-500"></i> Waiting
+            </div>
         </div>
     </div>
 
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
+    <div class="controls">
+        <button id="joinRoom" class="control-button bg-blue-600 hover:bg-blue-700">
+            <i class="fas fa-door-open"></i>
+        </button>
+        <button id="toggleVideo" class="control-button bg-gray-700 hover:bg-gray-600">
+            <i class="fas fa-video"></i>
+        </button>
+        <button id="toggleAudio" class="control-button bg-gray-700 hover:bg-gray-600">
+            <i class="fas fa-microphone"></i>
+        </button>
+        <button id="toggleScreen" class="control-button bg-purple-600 hover:bg-purple-700">
+            <i class="fas fa-desktop"></i>
+        </button>
+        <button id="endCall" class="control-button bg-red-600 hover:bg-red-700">
+            <i class="fas fa-phone-slash"></i>
+        </button>
+    </div>
+
+    <div id="toast"></div>
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
     </div>
 
     <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
 
-    <script>
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDB_ylrW7hartjCjSAqjjZjUoNSrSX7Et4",
-            authDomain: "blogs-a7325.firebaseapp.com",
-            databaseURL: "https://blogs-a7325-default-rtdb.firebaseio.com",
-            projectId: "blogs-a7325",
-            storageBucket: "blogs-a7325.appspot.com",
-            messagingSenderId: "868013133674",
-            appId: "1:868013133674:web:8ceaa7dfa63ee0d2a0df13",
-            measurementId: "G-RJX09FKMMY"
-        };
-
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.database(app);
-
-        // Elements
-        const localVideo = document.getElementById('localVideo');
-        const remoteVideo = document.getElementById('remoteVideo');
-        const toggleVideoBtn = document.getElementById('toggleVideo');
-        const toggleAudioBtn = document.getElementById('toggleAudio');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-
-        // WebRTC Config
-        const configuration = {
-            iceServers: [
-                { urls: "stun:stun.l.google.com:19302" },
-                { urls: "stun:stun1.l.google.com:19302" },
-                { urls: "stun:stun2.l.google.com:19302" }
-            ]
-        };
-        let peerConnection;
-        let localStream;
-
-        // Firebase Paths
-        const callRoom = db.ref('/calls');
-
-        // Media Control States
-        let isVideoEnabled = true;
-        let isAudioEnabled = true;
-
-        // Get Local Stream
-        async function getLocalStream() {
-            try {
-                loadingOverlay.style.display = 'flex';
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                localVideo.srcObject = localStream;
-                loadingOverlay.style.display = 'none';
-            } catch (error) {
-                console.error('Error accessing media devices:', error);
-                alert('Failed to access camera and microphone. Please ensure permissions are granted.');
-                loadingOverlay.style.display = 'none';
-            }
-        }
-
-        // Toggle Video
-        toggleVideoBtn.addEventListener('click', () => {
-            isVideoEnabled = !isVideoEnabled;
-            localStream.getVideoTracks().forEach(track => track.enabled = isVideoEnabled);
-            toggleVideoBtn.innerHTML = isVideoEnabled ? 
-                '<i class="fas fa-video"></i>' : 
-                '<i class="fas fa-video-slash"></i>';
-            toggleVideoBtn.classList.toggle('bg-red-600', !isVideoEnabled);
-            toggleVideoBtn.classList.toggle('bg-gray-700', isVideoEnabled);
-        });
-
-        // Toggle Audio
-        toggleAudioBtn.addEventListener('click', () => {
-            isAudioEnabled = !isAudioEnabled;
-            localStream.getAudioTracks().forEach(track => track.enabled = isAudioEnabled);
-            toggleAudioBtn.innerHTML = isAudioEnabled ? 
-                '<i class="fas fa-microphone"></i>' : 
-                '<i class="fas fa-microphone-slash"></i>';
-            toggleAudioBtn.classList.toggle('bg-red-600', !isAudioEnabled);
-            toggleAudioBtn.classList.toggle('bg-gray-700', isAudioEnabled);
-        });
-
-        // Start Call
-        document.getElementById('startCall').addEventListener('click', async () => {
-            loadingOverlay.style.display = 'flex';
-            try {
-                peerConnection = new RTCPeerConnection(configuration);
-
-                // Add Local Tracks
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                // Set Remote Stream
-                peerConnection.ontrack = event => {
-                    remoteVideo.srcObject = event.streams[0];
-                };
-
-                // Send ICE Candidates
-                peerConnection.onicecandidate = event => {
-                    if (event.candidate) {
-                        callRoom.child('ice').push(JSON.stringify(event.candidate));
-                    }
-                };
-
-                // Create and Send Offer
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                await callRoom.child('offer').set(JSON.stringify(offer));
-
-                // Listen for Answer
-                callRoom.child('answer').on('value', snapshot => {
-                    if (snapshot.exists() && !peerConnection.remoteDescription) {
-                        const answer = JSON.parse(snapshot.val());
-                        peerConnection.setRemoteDescription(answer);
-                    }
-                });
-
-                // Listen for ICE Candidates
-                callRoom.child('ice').on('child_added', snapshot => {
-                    const candidate = JSON.parse(snapshot.val());
-                    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                });
-
-            } catch (error) {
-                console.error('Error starting call:', error);
-                alert('Failed to start call. Please try again.');
-            }
-            loadingOverlay.style.display = 'none';
-        });
-
-        // Answer Call
-        callRoom.child('offer').on('value', async snapshot => {
-            if (snapshot.exists() && !peerConnection) {
-                loadingOverlay.style.display = 'flex';
-                try {
-                    peerConnection = new RTCPeerConnection(configuration);
-
-                    // Add Local Tracks
-                    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                    // Set Remote Stream
-                    peerConnection.ontrack = event => {
-                        remoteVideo.srcObject = event.streams[0];
-                    };
-
-                    // Send ICE Candidates
-                    peerConnection.onicecandidate = event => {
-                        if (event.candidate) {
-                            callRoom.child('ice').push(JSON.stringify(event.candidate));
-                        }
-                    };
-
-                    // Set Remote Offer and Create Answer
-                    const offer = JSON.parse(snapshot.val());
-                    await peerConnection.setRemoteDescription(offer);
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    await callRoom.child('answer').set(JSON.stringify(answer));
-
-                } catch (error) {
-                    console.error('Error answering call:', error);
-                    alert('Failed to answer call. Please try again.');
-                }
-                loadingOverlay.style.display = 'none';
-            }
-        });
-
-        // End Call
-        document.getElementById('endCall').addEventListener('click', async () => {
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            remoteVideo.srcObject = null;
-            await callRoom.remove();
-        });
-
-        // Initialize
-        getLocalStream();
-
-        // Connection Status
-        window.addEventListener('online', () => {
-            console.log('Connection restored');
-        });
-
-        window.addEventListener('offline', () => {
-            alert('Internet connection lost. Please check your connection.');
-        });
-    </script>
+    <script src="call.js"></script>
 </body>
 </html>
