@@ -10,11 +10,8 @@
 
     <style>
        html, body {
-    /* margin: 0; */
-    /* padding: 0; */
     height: 100%; /* Ensures gradient spans the full height */
-    background: linear-gradient(to bottom, #000000, #282828); /* Smooth black to gray gradient */
-    font-family: Arial, sans-serif;
+    background: #0f0f0f;    font-family: Arial, sans-serif;
     text-align: center;
 }
 
@@ -72,8 +69,8 @@
             transform: translateX(-50%);
             display: flex;
             gap: 10px;
-            filter: blur(10%);
-            background-color: rgba(255, 255, 255, 0.2);
+            filter: blur(50%);
+            background-color: rgba(255, 255, 255, 0.4);
             padding: 5px;
             border-radius: 50px;
             z-index: 1000;
@@ -91,7 +88,7 @@
             justify-content: center;
         }
         .control-button:hover {
-            background-color: #444;
+            background-color: #252525;
         }
         .control-button.active {
             background-color: #c62828;
@@ -101,46 +98,146 @@
             position: relative;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, 50%);
-            filter: blur(10%);
-            background-color: rgba(255, 255, 255, 0.047);
-            width: 230px;
-            /* border-radius: 10px; */
-            padding: 25px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            margin-bottom: 20px;
+            transform: translate(-50%, 0%);
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
         }
-        .setup-container input {
-            padding: 10px;
-            border: 1px solid #ddd;
-            /* border-radius: 4px; */
-            background-color: #444;
-            border: none;
-            box-shadow: 1px 2px 1px rgb(0, 0, 0) inset;
-            margin-right: 10px;
-            width: 207px;
-            margin-bottom: 10px;
+
+        .header {
+            margin-bottom: 2rem;
+            text-align: center;
         }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 500;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 0.875rem;
+            color: #666666;
+        }
+
+
+        .card {
+            background: #161616;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #262626;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        input {
+            width: 90%;
+            padding: 0.75rem 1rem;
+            background: #1c1c1c;
+            border: 1px solid #333333;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #404040;
+            background: #202020;
+        }
+
+        input::placeholder {
+            color: #666666;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
         .setup-container button {
-            padding: 10px 20px;
-            border: none;
-            width: 111.5px;
-            /* border-radius: 4px; */
-            box-shadow: 1px -2px 1px rgb(0, 0, 0) inset, -1px -2px 1px rgb(0, 0, 0)inset;
-            background-color: #0084ff;
-            color: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
             cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
-        .setup-container button :hover{
-            box-shadow: none;
+
+        .setup-container button i {
+            font-size: 0.875rem;
         }
-        #status {
-            color: rgb(255, 200, 0);
-            padding: 10px;
-            margin-top: 10px;
-            /* border-radius: 4px; */
-            background-color: #ffc80081;
+
+        .create-btn {
+            background: #1c1c1c;
+            color: #ffffff;
+            border: 1px solid #333333;
         }
+
+        .create-btn:hover {
+            background: #202020;
+        }
+
+        .join-btn {
+            background: #1c1c1c;
+            color: #ffffff;
+            border: 1px solid #333333;
+        }
+
+        .join-btn:hover {
+            background: #202020;
+        }
+
+        .start-call {
+            width: 100%;
+            background: #2563eb;
+            color: white;
+            border: none
+        }
+
+        .start-call:hover {
+            background: #1d4ed8;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: #1c1c1c;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            color: #666666;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+        }
+        
         .error {
             background-color: #ffebee;
             color: #c62828;
@@ -156,17 +253,34 @@
 <body>
     <div class="container">
         <div id="setupPanel" class="setup-container">
-            <h2 style="color: #ffffff;">Video Call App</h2>
-            <div>
-                <input type="text" id="roomId" placeholder="Enter Room ID">
-                <button id="createButton" style="padding: 10px; background-color: rgba(103, 176, 255, 0.245);color: #0084ff;">Create Room</button>
-                <button id="joinButton" style="padding: 10px; background-color: rgba(13, 255, 0, 0.121); color: green;">Join Room</button>
+            <div class="header">
+                <h1>Video Call</h1>
+                <p>Start or join a secure video call</p>
             </div>
-            <div id="status">Ready to start a call</div>
-            <div id="error" class="error hidden"></div>
-        </div>
 
-        
+            <div class="card">
+                <div class="input-group">
+                    <input id="roomId" type="text" placeholder="Room ID" />
+                </div>
+                <div class="button-group">
+                    <button id="createButton" class="create-btn">
+                        <i class="fas fa-plus"></i>
+                        Create
+                    </button>
+                    <button id="joinButton" class="join-btn">
+                        <i class="fas fa-arrow-right"></i>
+                        Join
+                    </button>
+                </div>
+                
+                <div id="status" class="status">
+                    <div class="status-dot"></div>
+                    System ready
+                </div>
+
+                <div id="error" class="error hidden"></div>
+            </div>
+        </div>
 
         <div id="callPanel" class="hidden">
             <div class="video-grid">
@@ -186,256 +300,6 @@
         </div>
     </div>
 
-    <script>
-        // Initialize Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDB_ylrW7hartjCjSAqjjZjUoNSrSX7Et4",
-            authDomain: "blogs-a7325.firebaseapp.com",
-            databaseURL: "https://blogs-a7325-default-rtdb.firebaseio.com",
-            projectId: "blogs-a7325",
-            storageBucket: "blogs-a7325.appspot.com",
-            messagingSenderId: "868013133674",
-            appId: "1:868013133674:web:8ceaa7dfa63ee0d2a0df13",
-            measurementId: "G-RJX09FKMMY"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        const configuration = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
-
-        let peerConnection;
-        let localStream;
-        let roomId;
-        let isAudioMuted = false;
-        let isVideoOff = false;
-
-        // DOM elements
-        const setupPanel = document.getElementById('setupPanel');
-        const callPanel = document.getElementById('callPanel');
-        const controlsPanel = document.getElementById('controls');
-        const createButton = document.getElementById('createButton');
-        const joinButton = document.getElementById('joinButton');
-        const hangupButton = document.getElementById('hangupButton');
-        const muteButton = document.getElementById('muteButton');
-        const videoButton = document.getElementById('videoButton');
-        const roomIdInput = document.getElementById('roomId');
-        const localVideo = document.getElementById('localVideo');
-        const remoteVideo = document.getElementById('remoteVideo');
-        const statusDiv = document.getElementById('status');
-        const errorDiv = document.getElementById('error');
-
-        createButton.addEventListener('click', createRoom);
-        joinButton.addEventListener('click', joinRoom);
-        hangupButton.addEventListener('click', hangup);
-        muteButton.addEventListener('click', toggleAudio);
-        videoButton.addEventListener('click', toggleVideo);
-
-        async function createRoom() {
-            try {
-                roomId = roomIdInput.value || Math.random().toString(36).substring(7);
-                roomIdInput.value = roomId;
-
-                // Get local media stream
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: true
-                });
-                localVideo.srcObject = localStream;
-
-                // Create peer connection
-                peerConnection = new RTCPeerConnection(configuration);
-                setupPeerConnection();
-
-                // Add local stream tracks to peer connection
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                });
-
-                // Create and set local description
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                // Save the offer to Firebase
-                await database.ref(`rooms/${roomId}/offer`).set({
-                    type: offer.type,
-                    sdp: offer.sdp
-                });
-
-                // Listen for answer
-                database.ref(`rooms/${roomId}/answer`).on('value', async snapshot => {
-                    const answer = snapshot.val();
-                    if (answer && !peerConnection.currentRemoteDescription) {
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                    }
-                });
-
-                showCallUI();
-                updateStatus('Room created! Share the Room ID: ' + roomId);
-
-            } catch (error) {
-                showError(`Error creating room: ${error.message}`);
-            }
-        }
-
-        async function joinRoom() {
-            try {
-                roomId = roomIdInput.value;
-                if (!roomId) {
-                    throw new Error('Please enter a room ID');
-                }
-
-                // Get local media stream
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: true
-                });
-                localVideo.srcObject = localStream;
-
-                // Get the offer from Firebase
-                const snapshot = await database.ref(`rooms/${roomId}/offer`).get();
-                const offer = snapshot.val();
-                if (!offer) {
-                    throw new Error('Room not found');
-                }
-
-                // Create peer connection
-                peerConnection = new RTCPeerConnection(configuration);
-                setupPeerConnection();
-
-                // Add local stream tracks to peer connection
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                });
-
-                // Set remote description (offer)
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-
-                // Create and set local description (answer)
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-
-                // Save the answer to Firebase
-                await database.ref(`rooms/${roomId}/answer`).set({
-                    type: answer.type,
-                    sdp: answer.sdp
-                });
-
-                showCallUI();
-                updateStatus('Connected to room: ' + roomId);
-
-            } catch (error) {
-                showError(`Error joining room: ${error.message}`);
-            }
-        }
-
-        function setupPeerConnection() {
-            // Handle ICE candidates
-            peerConnection.onicecandidate = event => {
-                if (event.candidate) {
-                    database.ref(`rooms/${roomId}/candidates/${Date.now()}`).set({
-                        candidate: event.candidate.toJSON()
-                    });
-                }
-            };
-
-            // Handle remote stream
-            peerConnection.ontrack = event => {
-                if (remoteVideo.srcObject !== event.streams[0]) {
-                    remoteVideo.srcObject = event.streams[0];
-                }
-            };
-
-            // Listen for remote ICE candidates
-            database.ref(`rooms/${roomId}/candidates`).on('child_added', snapshot => {
-                const data = snapshot.val();
-                if (data && data.candidate) {
-                    peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                }
-            });
-        }
-
-        function toggleAudio() {
-            if (localStream) {
-                const audioTrack = localStream.getAudioTracks()[0];
-                if (audioTrack) {
-                    isAudioMuted = !isAudioMuted;
-                    audioTrack.enabled = !isAudioMuted;
-                    muteButton.innerHTML = isAudioMuted ? `<i class="fa-solid fa-microphone-slash fa-xl" style="color: #ff2e2e;"></i>` : `<i class="fa-solid fa-microphone fa-xl" style="color: rgb(0, 145, 255);"></i>`;
-                    muteButton.classList.toggle('active', isAudioMuted);
-                }
-            }
-        }
-
-        function toggleVideo() {
-            if (localStream) {
-                const videoTrack = localStream.getVideoTracks()[0];
-                if (videoTrack) {
-                    isVideoOff = !isVideoOff;
-                    videoTrack.enabled = !isVideoOff;
-                    videoButton.innerHTML = isVideoOff ? `<i class="fa-solid fa-video-slash fa-xl" style="color: #ff1f1f;"></i>` : `<i class="fa-solid fa-video fa-xl" style="color: #00ff9d;"></i>`;
-                    videoButton.classList.toggle('active', isVideoOff);
-                }
-            }
-        }
-
-        function hangup() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
-            
-            if (peerConnection) {
-                peerConnection.close();
-            }
-
-            if (roomId) {
-                database.ref(`rooms/${roomId}`).remove();
-            }
-
-            // Reset variables
-            localStream = null;
-            peerConnection = null;
-            roomId = null;
-            isAudioMuted = false;
-            isVideoOff = false;
-
-            // Reset UI
-            localVideo.srcObject = null;
-            remoteVideo.srcObject = null;
-            hideCallUI();
-            updateStatus('Call ended');
-            roomIdInput.value = '';
-        }
-
-        function showCallUI() {
-            setupPanel.classList.add('hidden');
-            callPanel.classList.remove('hidden');
-            controlsPanel.classList.remove('hidden');
-        }
-
-        function hideCallUI() {
-            setupPanel.classList.remove('hidden');
-            callPanel.classList.add('hidden');
-            controlsPanel.classList.add('hidden');
-        }
-
-        function updateStatus(message) {
-            statusDiv.textContent = message;
-            errorDiv.classList.add('hidden');
-        }
-
-        function showError(message) {
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
-        }
-
-        // Clean up when the page is closed
-        window.addEventListener('beforeunload', hangup);
-    </script>
+    <script src="video.js"></script>
 </body>
 </html>
