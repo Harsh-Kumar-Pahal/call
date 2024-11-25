@@ -297,6 +297,7 @@
             <button class="control-button" id="muteButton" title="Mute Audio"><i class="fa-solid fa-microphone fa-xl" style="color: rgb(0, 145, 255);"></i></button>
             <button class="control-button" id="hangupButton" title="End Call"><i class="fa-solid fa-phone fa-xl" style="color: red;"></i></button>
             <button class="control-button" id="videoButton" title="Stop Video"><i class="fa-solid fa-video fa-xl" style="color: rgb(0, 255, 81);"></i></button>
+            <button class="control-button" title="flip Video" onclick="backCamera()"><i class="fa-solid fa-repeat fa-xl" style="color: #ffffff;"></i></button>
         </div>
     </div>
 
@@ -349,6 +350,40 @@ joinButton.addEventListener('click', joinRoom);
 hangupButton.addEventListener('click', hangup);
 muteButton.addEventListener('click', toggleAudio);
 videoButton.addEventListener('click', toggleVideo);
+
+
+async function backCamera() {
+    const backCameraConstraints = {
+        video: {
+            facingMode: { exact: "environment" } // Back camera
+        }
+    };
+
+    const frontCameraConstraints = {
+        video: {
+            facingMode: "user" // Front camera
+        }
+    };
+
+    try {
+        // Try accessing the back camera
+        backCameraStream = await navigator.mediaDevices.getUserMedia(backCameraConstraints);
+        localVideo.srcObject = backCameraStream;
+        console.log("Back camera accessed successfully.");
+    } catch (error) {
+        console.warn("Back camera not available or access failed. Falling back to front camera.", error);
+        try {
+            // Fallback to the front camera
+            frontCameraStream = await navigator.mediaDevices.getUserMedia(frontCameraConstraints);
+            localVideo.srcObject = frontCameraStream;
+            console.log("Front camera accessed successfully.");
+        } catch (fallbackError) {
+            console.error("Failed to access front camera as well.", fallbackError);
+            alert("Unable to access any camera on this device.");
+        }
+    }
+}
+
 
 async function createRoom() {
     try {
