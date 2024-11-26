@@ -75,39 +75,48 @@ function setupControlVisibility() {
     // Hide controls after 2-3 seconds
     hideTimeout = setTimeout(() => {
         controls.classList.add('hidden');
-    }, 3000);
+    }, 2500);
 
-    // Show controls when user touches/clicks screen
-    document.addEventListener('touchstart', () => {
-        controls.classList.remove('hidden');
-        
-        // Clear previous timeout
-        clearTimeout(hideTimeout);
-        
-        // Hide controls after 5-10 seconds
-        hideTimeout = setTimeout(() => {
-            controls.classList.add('hidden');
-        }, 10000);
-    });
+    // Function to handle visibility toggle
+    function toggleControlsVisibility(event) {
+        // Check if the interaction is outside the controls area
+        const isOutsideControls = 
+            !controls.contains(event.target) && 
+            event.target !== controls;
 
-    // Similar handling for mouse clicks
-    document.addEventListener('click', () => {
-        controls.classList.remove('hidden');
-        
-        // Clear previous timeout
-        clearTimeout(hideTimeout);
-        
-        // Hide controls after 5-10 seconds
-        hideTimeout = setTimeout(() => {
-            controls.classList.add('hidden');
-        }, 10000);
-    });
+        // Prevent default to stop propagation on mobile
+        if (isOutsideControls) {
+            event.preventDefault();
+
+            // If controls are hidden, show them
+            if (controls.classList.contains('hidden')) {
+                controls.classList.remove('hidden');
+                
+                // Clear previous timeout if exists
+                clearTimeout(hideTimeout);
+
+                // Automatically hide after 5-10 seconds
+                hideTimeout = setTimeout(() => {
+                    controls.classList.add('hidden');
+                }, 7500);
+            } 
+            // If controls are visible, hide them
+            else {
+                controls.classList.add('hidden');
+            }
+        }
+    }
+
+    // Add event listeners for both touch and click events
+    document.addEventListener('touchstart', toggleControlsVisibility, { passive: false });
+    document.addEventListener('mousedown', toggleControlsVisibility);
 }
+
 
 // Call the function when the page loads
 // window.addEventListener('load', setupControlVisibility);
     </script>
 
-    <script src="call.js"></script>
+    <script src="video.js"></script>
 </body>
 </html>
