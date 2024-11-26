@@ -78,41 +78,39 @@ function setupControlVisibility() {
     }, 2500);
 
     // Function to handle visibility toggle
-    function toggleControlsVisibility(event) {
-        // Check if the interaction is outside the controls area
-        const isOutsideControls = 
-            !controls.contains(event.target) && 
-            event.target !== controls;
+    function toggleControlsVisibility(e) {
+        // Prevent interactions with control buttons
+        if (controls.contains(e.target)) return;
 
-        // Prevent default to stop propagation on mobile
-        if (isOutsideControls) {
-            event.preventDefault();
+        // Prevent multiple events
+        e.stopPropagation();
+        e.preventDefault();
 
-            // If controls are hidden, show them
-            if (controls.classList.contains('hidden')) {
-                controls.classList.remove('hidden');
-                
-                // Clear previous timeout if exists
-                clearTimeout(hideTimeout);
+        // If controls are hidden, show them
+        if (controls.classList.contains('hidden')) {
+            controls.classList.remove('hidden');
+            
+            // Clear previous timeout if exists
+            clearTimeout(hideTimeout);
 
-                // Automatically hide after 5-10 seconds
-                hideTimeout = setTimeout(() => {
-                    controls.classList.add('hidden');
-                }, 7500);
-            } 
-            // If controls are visible, hide them
-            else {
+            // Automatically hide after 5-10 seconds
+            hideTimeout = setTimeout(() => {
                 controls.classList.add('hidden');
-            }
+            }, 7500);
+        } 
+        // If controls are visible, hide them
+        else {
+            controls.classList.add('hidden');
         }
     }
 
     // Add event listeners for both touch and click events
-    document.addEventListener('touchstart', toggleControlsVisibility, { passive: false });
-    document.addEventListener('mousedown', toggleControlsVisibility);
+    document.body.addEventListener('touchend', toggleControlsVisibility, { passive: false });
+    document.body.addEventListener('mouseup', toggleControlsVisibility);
 }
 
-
+// Call the function when the page loads
+window.addEventListener('load', setupControlVisibility);
 // Call the function when the page loads
 // window.addEventListener('load', setupControlVisibility);
     </script>
