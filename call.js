@@ -7,7 +7,7 @@
   storageBucket: "blogs-a7325.appspot.com",
   messagingSenderId: "868013133674",
   appId: "1:868013133674:web:8ceaa7dfa63ee0d2a0df13",
-  measurementId: "G-RJX09FKMMY"
+  measurementId: "G-RJX09FKMMY"}
     
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
