@@ -1,13 +1,13 @@
      // Initialize Firebase
      const firebaseConfig = {
-       apiKey: "AIzaSyCQGE1Z_ikaZVjajxRS9TdHq23_ic7W5q4",
-  authDomain: "fir-c0c18.firebaseapp.com",
-  databaseURL: "https://fir-c0c18-default-rtdb.firebaseio.com",
-  projectId: "fir-c0c18",
-  storageBucket: "fir-c0c18.firebasestorage.app",
-  messagingSenderId: "11840063593",
-  appId: "1:11840063593:web:73ac480ff6c200b7dfbaf8"
-    };
+      apiKey: "AIzaSyDB_ylrW7hartjCjSAqjjZjUoNSrSX7Et4",
+  authDomain: "blogs-a7325.firebaseapp.com",
+  databaseURL: "https://blogs-a7325-default-rtdb.firebaseio.com",
+  projectId: "blogs-a7325",
+  storageBucket: "blogs-a7325.appspot.com",
+  messagingSenderId: "868013133674",
+  appId: "1:868013133674:web:8ceaa7dfa63ee0d2a0df13",
+  measurementId: "G-RJX09FKMMY"
     
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
