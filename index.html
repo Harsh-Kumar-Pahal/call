@@ -3,116 +3,412 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Call App</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database-compat.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="video.css">
+    <title>Video Call</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
 
+        body {
+            background-color: #f8f8f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 6px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        button {
+            padding: 6px 12px;
+            margin: 2px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button.hangup {
+            background-color: #dc3545;
+        }
+
+        button.hangup:hover:not(:disabled) {
+            background-color: #b02a37;
+        }
+
+        #status {
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: #555;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            aspect-ratio: 4 / 3;
+            background: #000;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        #remoteVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #remoteVideo.hidden {
+            display: none;
+        }
+
+        #localVideo {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 100px;
+            height: 75px;
+            background: #000;
+            border-radius: 4px;
+            border: 1px solid #fff;
+            object-fit: cover;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.3rem;
+            }
+
+            .controls {
+                max-width: 100%;
+                padding: 8px;
+            }
+
+            input[type="text"] {
+                font-size: 0.8rem;
+            }
+
+            button {
+                padding: 5px 10px;
+                font-size: 0.75rem;
+                width: 30%;
+                min-width: 60px;
+            }
+
+            .video-container {
+                max-width: 100%;
+            }
+
+            #localVideo {
+                width: 80px;
+                height: 60px;
+            }
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div id="setupPanel" class="setup-container">
-            <div class="header">
-                <h1>Video Call</h1>
-                <p>Start or join a secure video call</p>
-            </div>
-
-            <div class="card">
-                <div class="input-group">
-                    <input id="roomId" type="text" placeholder="Room ID" />
-                </div>
-                <div class="button-group">
-                    <button id="createButton" class="create-btn">
-                        <i class="fas fa-plus"></i>
-                        Create
-                    </button>
-                    <button id="joinButton" class="join-btn">
-                        <i class="fas fa-arrow-right"></i>
-                        Join
-                    </button>
-                </div>
-                
-                <div id="status" class="status">
-                    <div class="status-dot"></div>
-                    System ready
-                </div>
-
-                <div id="error" class="error hidden"></div>
-            </div>
-        </div>
-
-        <div id="callPanel" class="hidden">
-            <div class="video-grid">
-                <div class="video-container" >
-                    <video id="localVideo" autoplay playsinline muted style="object-fit:contain;"></video>
-                </div>
-                <div class="video-container"  >
-                    <video id="remoteVideo" autoplay playsinline></video>
-                </div>
-            </div>
-        </div>
-
-        <div id="controls" class="controls hidden">
-            <button class="control-button" id="muteButton" title="Mute Audio"><i class="fa-solid fa-microphone fa-xl" style="color: rgb(0, 145, 255);"></i></button>
-            <button class="control-button" id="hangupButton" title="End Call"><i class="fa-solid fa-phone fa-xl" style="color: red; transform: rotate(135deg);"></i></button>
-            <button class="control-button" id="videoButton" title="Stop Video"><i class="fa-solid fa-video fa-xl" style="color: rgb(0, 255, 81);"></i></button>
-            <button class="control-button" title="flip Video" onclick="backCamera()"><i class="fa-solid fa-repeat fa-xl" style="color: #ffffff;"></i></button>
-        </div>
+    <h1>Video Call</h1>
+    <div class="controls">
+        <input type="text" id="callInput" placeholder="Enter Call ID">
+        <button id="createCallButton">Create</button>
+        <button id="answerCallButton">Join</button>
+        <button id="hangupButton" class="hangup" disabled>End</button>
+        <div id="status">Idle</div>
+    </div>
+    <div class="video-container">
+        <video id="remoteVideo" autoplay playsinline class="hidden"></video>
+        <video id="localVideo" autoplay playsinline muted></video>
     </div>
 
     <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA4S8SNuZ1mV6xuCGbv4S7EqlI3kom6UGA",
+            authDomain: "xbeat-95bb8.firebaseapp.com",
+            databaseURL: "https://xbeat-95bb8-default-rtdb.firebaseio.com",
+            projectId: "xbeat-95bb8",
+            storageBucket: "xbeat-95bb8.appspot.com",
+            messagingSenderId: "753774332302",
+            appId: "1:753774332302:web:6dbc62e555d89b16967cdf",
+            measurementId: "G-9NQ3XZQ527"
+        };
 
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const callsRef = database.ref('calls');
 
+        // DOM elements
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const callInput = document.getElementById('callInput');
+        const createCallButton = document.getElementById('createCallButton');
+        const answerCallButton = document.getElementById('answerCallButton');
+        const hangupButton = document.getElementById('hangupButton');
+        const statusDiv = document.getElementById('status');
 
-function setupControlVisibility() {
-    const controls = document.getElementById('controls');
-    let hideTimeout;
+        let localStream, peerConnection, currentCallId, callRef;
+        let localCandidateListener, remoteCandidateListener, offerListener, answerListener;
 
-    // Initially show controls
-    controls.classList.remove('hidden');
+        // WebRTC configuration
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
 
-    // Hide controls after 2-3 seconds
-    hideTimeout = setTimeout(() => {
-        controls.classList.add('hidden');
-    }, 2500);
-
-    // Function to handle visibility toggle
-    function toggleControlsVisibility(e) {
-        // Prevent interactions with control buttons
-        if (controls.contains(e.target)) return;
-
-        // Prevent multiple events
-        e.stopPropagation();
-        e.preventDefault();
-
-        // If controls are hidden, show them
-        if (controls.classList.contains('hidden')) {
-            controls.classList.remove('hidden');
-            
-            // Clear previous timeout if exists
-            clearTimeout(hideTimeout);
-
-            // Automatically hide after 5-10 seconds
-            hideTimeout = setTimeout(() => {
-                controls.classList.add('hidden');
-            }, 7500);
-        } 
-        // If controls are visible, hide them
-        else {
-            controls.classList.add('hidden');
+        // UI state functions
+        function setStatus(message) {
+            statusDiv.textContent = `Status: ${message}`;
         }
-    }
 
-    // Add event listeners for both touch and click events
-    document.body.addEventListener('touchend', toggleControlsVisibility, { passive: false });
-    document.body.addEventListener('mouseup', toggleControlsVisibility);
-}
+        function updateButtons(calling = false, inCall = false) {
+            createCallButton.disabled = calling || inCall;
+            answerCallButton.disabled = calling || inCall;
+            callInput.disabled = calling || inCall;
+            hangupButton.disabled = !inCall && !calling;
+        }
 
-// Call the function when the page loads
-// window.addEventListener('load', setupControlVisibility);
+        // Get local media stream
+        async function startLocalStream() {
+            setStatus('Requesting camera...');
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localVideo.srcObject = localStream;
+                setStatus('Local stream started.');
+                return true;
+            } catch (e) {
+                setStatus(`Error: ${e.message}`);
+                alert('Error accessing camera/microphone. Please check permissions.');
+                return false;
+            }
+        }
+
+        // Setup RTCPeerConnection listeners
+        function setupPeerConnectionListeners() {
+            peerConnection.ontrack = (event) => {
+                if (remoteVideo.srcObject !== event.streams[0]) {
+                    remoteVideo.srcObject = event.streams[0];
+                    remoteVideo.classList.remove('hidden');
+                    setStatus('Connected!');
+                }
+            };
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate && callRef) {
+                    const candidatePath = peerConnection.localDescription.type === 'offer' ? 'callerCandidates' : 'calleeCandidates';
+                    callRef.child('candidates').child(candidatePath).push(event.candidate.toJSON());
+                }
+            };
+
+            peerConnection.onconnectionstatechange = () => {
+                setStatus(`Connection: ${peerConnection.connectionState}`);
+                if (peerConnection.connectionState === 'connected') {
+                    remoteVideo.classList.remove('hidden');
+                }
+            };
+        }
+
+        // Create a new call
+        createCallButton.onclick = async () => {
+            const callId = callInput.value;
+            if (!callId) {
+                alert('Enter a Call ID.');
+                return;
+            }
+
+            setStatus('Creating call...');
+            updateButtons(true);
+
+            if (!(await startLocalStream())) {
+                updateButtons(false);
+                return;
+            }
+
+            currentCallId = callId;
+            callRef = callsRef.child(callId);
+
+            const snapshot = await callRef.get();
+            if (snapshot.exists()) {
+                setStatus(`Call ID "${callId}" exists. Use Join.`);
+                alert(`Call ID "${callId}" exists. Use "Join".`);
+                hangup();
+                updateButtons(false);
+                return;
+            }
+
+            peerConnection = new RTCPeerConnection(configuration);
+            setupPeerConnectionListeners();
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+            listenForRemoteCandidates('calleeCandidates');
+            listenForAnswer();
+
+            try {
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                await callRef.child('offer').set({ sdp: offer.sdp, type: offer.type });
+                setStatus('Waiting for answer...');
+            } catch (e) {
+                setStatus(`Error: ${e.message}`);
+                hangup();
+            }
+        };
+
+        // Join an existing call
+        answerCallButton.onclick = async () => {
+            const callId = callInput.value;
+            if (!callId) {
+                alert('Enter a Call ID.');
+                return;
+            }
+
+            setStatus('Joining call...');
+            updateButtons(true);
+
+            if (!(await startLocalStream())) {
+                updateButtons(false);
+                return;
+            }
+
+            currentCallId = callId;
+            callRef = callsRef.child(callId);
+
+            const offerSnapshot = await callRef.child('offer').get();
+            if (!offerSnapshot.exists()) {
+                setStatus(`No call found for ID "${callId}".`);
+                alert(`No call found for ID "${callId}". Use "Create".`);
+                hangup();
+                updateButtons(false);
+                return;
+            }
+
+            peerConnection = new RTCPeerConnection(configuration);
+            setupPeerConnectionListeners();
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+            listenForRemoteCandidates('callerCandidates');
+
+            try {
+                const offer = offerSnapshot.val();
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                await callRef.child('answer').set({ sdp: answer.sdp, type: answer.type });
+                setStatus('Connecting...');
+            } catch (e) {
+                setStatus(`Error: ${e.message}`);
+                hangup();
+            }
+        };
+
+        // Listen for answer
+        function listenForAnswer() {
+            if (answerListener) answerListener.off();
+            answerListener = callRef.child('answer').on('value', async (snapshot) => {
+                const answer = snapshot.val();
+                if (answer && !peerConnection.remoteDescription) {
+                    try {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                        setStatus('Answer received. Connecting...');
+                        updateButtons(false, true);
+                    } catch (e) {
+                        setStatus(`Error: ${e.message}`);
+                    }
+                }
+            });
+        }
+
+        // Listen for remote ICE candidates
+        function listenForRemoteCandidates(remoteCandidatePath) {
+            if (remoteCandidateListener) remoteCandidateListener.off();
+            remoteCandidateListener = callRef.child('candidates').child(remoteCandidatePath).on('child_added', async (snapshot) => {
+                const candidate = snapshot.val();
+                if (candidate && peerConnection.remoteDescription) {
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (e) {
+                        console.error('Error adding ICE candidate:', e);
+                    }
+                }
+            });
+        }
+
+        // Hang up
+        function hangup() {
+            setStatus('Hanging up...');
+            updateButtons(false, false);
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localVideo.srcObject = null;
+            }
+            if (remoteVideo) {
+                remoteVideo.srcObject = null;
+                remoteVideo.classList.add('hidden');
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (offerListener) offerListener.off();
+            if (answerListener) answerListener.off();
+            if (localCandidateListener) localCandidateListener.off();
+            if (remoteCandidateListener) remoteCandidateListener.off();
+
+            currentCallId = null;
+            callRef = null;
+            setStatus('Idle.');
+        }
+
+        hangupButton.onclick = hangup;
+        window.onbeforeunload = hangup;
     </script>
-
-    <script src="call.js"></script>
 </body>
 </html>
+
+
