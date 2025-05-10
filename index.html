@@ -1,522 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Basic WebRTC Video Call (Firebase Signaling)</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 20px;
-            background-color: #f0f0f0;
-        }
-        .container {
-            display: flex;
-            justify-content: space-around;
-            width: 100%;
-            max-width: 1000px;
-            margin-bottom: 20px;
-        }
-        .video-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 10px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            background-color: white;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-        }
-        video {
-            width: 400px;
-            height: 300px;
-            background-color: #000;
-            margin-bottom: 10px;
-        }
-        button {
-            margin: 5px;
-            padding: 10px 15px;
-            cursor: pointer;
-        }
-        input[type="text"] {
-             margin: 5px;
-             padding: 10px;
-             border: 1px solid #ccc;
-             width: 200px;
-        }
-        h1, h2 {
-            text-align: center;
-            color: #333;
-        }
-        .controls {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ccc;
-            background-color: white;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        #status {
-            margin-top: 15px;
-            font-weight: bold;
-            color: blue;
-        }
-        #remoteVideo.hidden {
-            display: none; /* Hide remote video until connected */
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="video.css">
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
-
-    <h1>Basic WebRTC Video Call</h1>
-    <p>(Using Firebase Realtime Database for Signaling)</p>
-
-    <!-- IMPORTANT: Replace with your Firebase config -->
-    <script>
-        // ADD YOUR FIREBASE CONFIG HERE
-        const firebaseConfig = {
-             apiKey: "AIzaSyA4S8SNuZ1mV6xuCGbv4S7EqlI3kom6UGA",
-  authDomain: "xbeat-95bb8.firebaseapp.com",
-  databaseURL: "https://xbeat-95bb8-default-rtdb.firebaseio.com",
-  projectId: "xbeat-95bb8",
-  storageBucket: "xbeat-95bb8.appspot.com",
-  messagingSenderId: "753774332302",
-  appId: "1:753774332302:web:6dbc62e555d89b16967cdf",
-  measurementId: "G-9NQ3XZQ527"
-        };
-
-        // Initialize Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        } else {
-            firebase.app(); // if already initialized, use that one
-        }
-
-        const database = firebase.database();
-        const callsRef = database.ref('calls'); // Base reference for calls
-
-         // IMPORTANT SECURITY WARNING: Embedding API keys like this in a public client-side file is generally NOT secure
-         // for production apps that handle sensitive data or require strict access control.
-         // For this basic example demonstrating WebRTC signaling flow within a single HTML file, it's acceptable,
-         // but be aware of the risks if adapting for real-world use. Use Firebase security rules to limit access.
-
-    </script>
-
-
-    <div class="controls">
-        <h2>Call Controls</h2>
-        <input type="text" id="callInput" placeholder="Enter Call ID">
-        <button id="createCallButton">Create Call</button>
-        <button id="answerCallButton">Join Call</button>
-        <button id="hangupButton" disabled>Hang Up</button>
-        <p id="status">Idle</p>
-    </div>
-
     <div class="container">
-        <div class="video-box">
-            <h2>Local Video</h2>
-            <video id="localVideo" autoplay playsinline muted></video>
+        <div id="setupPanel" class="setup-container">
+            <div class="header">
+                <h1>Video Call</h1>
+                <p>Start or join a secure video call</p>
+            </div>
+
+            <div class="card">
+                <div class="input-group">
+                    <input id="roomId" type="text" placeholder="Room ID" />
+                </div>
+                <div class="button-group">
+                    <button id="createButton" class="create-btn">
+                        <i class="fas fa-plus"></i>
+                        Create
+                    </button>
+                    <button id="joinButton" class="join-btn">
+                        <i class="fas fa-arrow-right"></i>
+                        Join
+                    </button>
+                </div>
+                
+                <div id="status" class="status">
+                    <div class="status-dot"></div>
+                    System ready
+                </div>
+
+                <div id="error" class="error hidden"></div>
+            </div>
         </div>
-        <div class="video-box">
-            <h2>Remote Video</h2>
-            <video id="remoteVideo" autoplay playsinline class="hidden"></video>
+
+        <div id="callPanel" class="hidden">
+            <div class="video-grid">
+                <div class="video-container" >
+                    <video id="localVideo" autoplay playsinline muted style="object-fit:contain;"></video>
+                </div>
+                <div class="video-container"  >
+                    <video id="remoteVideo" autoplay playsinline></video>
+                </div>
+            </div>
+        </div>
+
+        <div id="controls" class="controls hidden">
+            <button class="control-button" id="muteButton" title="Mute Audio"><i class="fa-solid fa-microphone fa-xl" style="color: rgb(0, 145, 255);"></i></button>
+            <button class="control-button" id="hangupButton" title="End Call"><i class="fa-solid fa-phone fa-xl" style="color: red; transform: rotate(135deg);"></i></button>
+            <button class="control-button" id="videoButton" title="Stop Video"><i class="fa-solid fa-video fa-xl" style="color: rgb(0, 255, 81);"></i></button>
+            <button class="control-button" title="flip Video" onclick="backCamera()"><i class="fa-solid fa-repeat fa-xl" style="color: #ffffff;"></i></button>
         </div>
     </div>
 
-
     <script>
-        // Get DOM elements
-        const localVideo = document.getElementById('localVideo');
-        const remoteVideo = document.getElementById('remoteVideo');
-        const callInput = document.getElementById('callInput');
-        const createCallButton = document.getElementById('createCallButton');
-        const answerCallButton = document.getElementById('answerCallButton');
-        const hangupButton = document.getElementById('hangupButton');
-        const statusDiv = document.getElementById('status');
-
-        let localStream;
-        let peerConnection;
-        let currentCallId = null;
-        let callRef = null; // Firebase reference for the current call
-        let localCandidateListener = null; // Firebase listener for local candidates
-        let remoteCandidateListener = null; // Firebase listener for remote candidates
-        let offerListener = null; // Firebase listener for offer
-        let answerListener = null; // Firebase listener for answer
 
 
-        // STUN server configuration (helps peers find each other, public servers are fine here)
-        // Note: Firebase is for signaling, NOT STUN/TURN. STUN/TURN servers are still needed.
-        const configuration = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                // Add more STUN/TURN servers for better reliability if needed
-            ]
-        };
 
-        // --- UI State Functions ---
-        function setStatus(message) {
-            statusDiv.textContent = `Status: ${message}`;
+function setupControlVisibility() {
+    const controls = document.getElementById('controls');
+    let hideTimeout;
+
+    // Initially show controls
+    controls.classList.remove('hidden');
+
+    // Hide controls after 2-3 seconds
+    hideTimeout = setTimeout(() => {
+        controls.classList.add('hidden');
+    }, 2500);
+
+    // Function to handle visibility toggle
+    function toggleControlsVisibility(e) {
+        // Prevent interactions with control buttons
+        if (controls.contains(e.target)) return;
+
+        // Prevent multiple events
+        e.stopPropagation();
+        e.preventDefault();
+
+        // If controls are hidden, show them
+        if (controls.classList.contains('hidden')) {
+            controls.classList.remove('hidden');
+            
+            // Clear previous timeout if exists
+            clearTimeout(hideTimeout);
+
+            // Automatically hide after 5-10 seconds
+            hideTimeout = setTimeout(() => {
+                controls.classList.add('hidden');
+            }, 7500);
+        } 
+        // If controls are visible, hide them
+        else {
+            controls.classList.add('hidden');
         }
+    }
 
-        function updateButtons(calling = false, inCall = false) {
-             createCallButton.disabled = calling || inCall;
-             answerCallButton.disabled = calling || inCall;
-             callInput.disabled = calling || inCall;
-             hangupButton.disabled = !inCall && !calling; // Enable hangup only when initiating or in call
-        }
+    // Add event listeners for both touch and click events
+    document.body.addEventListener('touchend', toggleControlsVisibility, { passive: false });
+    document.body.addEventListener('mouseup', toggleControlsVisibility);
+}
 
-        // --- Core WebRTC and Firebase Logic ---
-
-        // Get local media stream
-        async function startLocalStream() {
-            setStatus('Requesting camera and microphone...');
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                localVideo.srcObject = localStream;
-                setStatus('Local stream started.');
-                return true;
-            } catch (e) {
-                console.error('Error getting local stream:', e);
-                setStatus(`Error getting local stream: ${e.message}`);
-                alert('Error getting local stream: ' + e.message + '. Please ensure you have a camera and microphone connected and granted permissions.');
-                return false;
-            }
-        }
-
-        // Setup RTCPeerConnection listeners
-        function setupPeerConnectionListeners() {
-             if (!peerConnection) return;
-
-            // Listen for remote tracks
-            peerConnection.ontrack = (event) => {
-                console.log('Received remote track');
-                 if (remoteVideo.srcObject !== event.streams[0]) {
-                    remoteVideo.srcObject = event.streams[0];
-                    remoteVideo.classList.remove('hidden'); // Show remote video
-                    setStatus('Remote stream received. Call connected!');
-                 }
-            };
-
-            // Listen for local ICE candidates and send them to Firebase
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    console.log('Generated ICE candidate:', event.candidate);
-                    // Determine which candidate list to push to based on call state
-                    const candidatePath = peerConnection.localDescription.type === 'offer'
-                        ? 'callerCandidates' // If I sent the offer, I'm the caller
-                        : 'calleeCandidates'; // If I sent the answer, I'm the callee
-
-                    if (callRef) {
-                         callRef.child('candidates').child(candidatePath).push(event.candidate.toJSON());
-                         console.log(`Pushed candidate to ${candidatePath}`);
-                    } else {
-                         console.warn('PeerConnection generated candidate but callRef is not set.');
-                    }
-                } else {
-                    console.log('ICE gathering complete.');
-                }
-            };
-
-            // Listen for connection state changes (for debugging/status)
-            peerConnection.onconnectionstatechange = () => {
-                console.log(`Connection state changed: ${peerConnection.connectionState}`);
-                 switch(peerConnection.connectionState) {
-                     case 'connected':
-                         setStatus('Connection State: Connected');
-                         remoteVideo.classList.remove('hidden');
-                         break;
-                     case 'disconnected':
-                     case 'failed':
-                         setStatus('Connection State: Disconnected/Failed');
-                         // Consider clean up here
-                         break;
-                     case 'closed':
-                         setStatus('Connection State: Closed');
-                         // Clean up
-                         break;
-                     case 'new':
-                         setStatus('Connection State: New');
-                         break;
-                     case 'connecting':
-                         setStatus('Connection State: Connecting...');
-                         break;
-                     default:
-                        setStatus(`Connection State: ${peerConnection.connectionState}`);
-                 }
-            };
-
-             peerConnection.oniceconnectionstatechange = () => {
-                 console.log(`ICE Connection state changed: ${peerConnection.iceConnectionState}`);
-             };
-        }
-
-
-        // Create a new call (Initiator)
-        createCallButton.onclick = async () => {
-            const callId = callInput.value;
-            if (!callId) {
-                alert('Please enter a Call ID.');
-                return;
-            }
-
-            setStatus('Creating call...');
-            updateButtons(true);
-
-            const streamStarted = await startLocalStream();
-            if (!streamStarted) {
-                 updateButtons(false); // Reset buttons if stream failed
-                 return;
-            }
-
-            currentCallId = callId;
-            callRef = callsRef.child(callId);
-
-            // Check if a call with this ID already exists
-            const snapshot = await callRef.get();
-            if (snapshot.exists()) {
-                setStatus(`Call ID "${callId}" already exists. Please use Join Call.`);
-                alert(`Call ID "${callId}" already exists. Please use "Join Call" instead.`);
-                hangup(); // Clean up stream
-                 updateButtons(false);
-                 return;
-            }
-
-            // Create Peer Connection and setup listeners
-            peerConnection = new RTCPeerConnection(configuration);
-            setupPeerConnectionListeners();
-
-            // Add local stream to PC
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
-
-             // --- Listen for remote candidates ---
-            // This listener needs to be set up *before* the remote description to catch early candidates
-            listenForRemoteCandidates('calleeCandidates');
-
-
-            // Listen for answer
-            listenForAnswer();
-
-
-            // Create Offer
-            try {
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                console.log('Created offer and set as local description');
-
-                // Send Offer to Firebase
-                await callRef.child('offer').set({
-                     sdp: offer.sdp,
-                     type: offer.type,
-                 });
-                setStatus('Offer sent to Firebase. Waiting for answer...');
-
-            } catch (e) {
-                console.error('Error creating offer:', e);
-                setStatus(`Error creating offer: ${e.message}`);
-                 hangup();
-            }
-        };
-
-        // Join an existing call (Answerer)
-        answerCallButton.onclick = async () => {
-            const callId = callInput.value;
-            if (!callId) {
-                alert('Please enter a Call ID.');
-                return;
-            }
-
-             setStatus('Joining call...');
-             updateButtons(true);
-
-            const streamStarted = await startLocalStream();
-             if (!streamStarted) {
-                 updateButtons(false); // Reset buttons if stream failed
-                 return;
-            }
-
-            currentCallId = callId;
-            callRef = callsRef.child(callId);
-
-            // Check if a call with this ID exists and has an offer
-            const offerSnapshot = await callRef.child('offer').get();
-            if (!offerSnapshot.exists()) {
-                setStatus(`No active call found with ID "${callId}". Please use Create Call.`);
-                 alert(`No active call found with ID "${callId}". Please use "Create Call" instead.`);
-                hangup(); // Clean up stream
-                 updateButtons(false);
-                 return;
-            }
-
-            // Create Peer Connection and setup listeners
-            peerConnection = new RTCPeerConnection(configuration);
-            setupPeerConnectionListeners();
-
-             // Add local stream to PC
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
-
-            // --- Listen for remote candidates ---
-             // This listener needs to be set up *before* the remote description to catch early candidates
-            listenForRemoteCandidates('callerCandidates');
-
-
-            // Get and set remote offer
-            try {
-                 const offer = offerSnapshot.val();
-                 await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-                 console.log('Set remote offer');
-                 setStatus('Remote offer received. Creating answer...');
-
-                // Create Answer
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                console.log('Created answer and set as local description');
-
-                // Send Answer to Firebase
-                await callRef.child('answer').set({
-                    sdp: answer.sdp,
-                    type: answer.type,
-                });
-                setStatus('Answer sent to Firebase. Connecting...');
-
-            } catch (e) {
-                console.error('Error creating or setting answer:', e);
-                setStatus(`Error answering call: ${e.message}`);
-                hangup();
-            }
-        };
-
-        // Listen for the Answer (Initiator side)
-        function listenForAnswer() {
-            if (answerListener) {
-                 answerListener.off(); // Remove previous listener if exists
-            }
-            answerListener = callRef.child('answer').on('value', async (snapshot) => {
-                const answer = snapshot.val();
-                if (answer && peerConnection && peerConnection.currentRemoteDescription !== new RTCSessionDescription(answer)) {
-                    console.log('Received remote answer:', answer);
-                    setStatus('Received answer. Setting remote description...');
-                    try {
-                        // Use setRemoteDescription only if it's a new answer and remote description isn't already set
-                        if (!peerConnection.remoteDescription) {
-                             await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                             console.log('Remote answer set.');
-                             setStatus('Remote answer set. Exchanging ICE candidates...');
-                             updateButtons(false, true); // Call should be establishing now
-                        } else {
-                            console.warn('Received answer but remote description is already set.');
-                        }
-                    } catch (e) {
-                        console.error('Error setting remote answer:', e);
-                        setStatus(`Error setting remote answer: ${e.message}`);
-                    }
-                }
-            });
-        }
-
-        // Listen for ICE Candidates from the remote peer
-        function listenForRemoteCandidates(remoteCandidatePath) {
-             // Clear any previous listener
-             if (remoteCandidateListener) {
-                 remoteCandidateListener.off();
-             }
-
-             // Listen for new candidates being added
-            remoteCandidateListener = callRef.child('candidates').child(remoteCandidatePath).on('child_added', async (snapshot) => {
-                const candidate = snapshot.val();
-                if (candidate && peerConnection) {
-                     console.log('Received remote ICE candidate:', candidate);
-                    try {
-                         // Only add candidate if remote description is already set
-                        if (peerConnection.remoteDescription) {
-                            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                             console.log('Added remote ICE candidate');
-                        } else {
-                            console.warn('Received candidate but remote description not set. Candidate will be queued by browser.');
-                            // The browser's RTCPeerConnection queue handles candidates received before the remote description is set,
-                            // so we usually don't need explicit manual queuing here.
-                        }
-                    } catch (e) {
-                        console.error('Error adding remote ICE candidate:', e);
-                    }
-                }
-            });
-            console.log(`Listening for remote candidates on path: ${remoteCandidatePath}`);
-        }
-
-
-        // Hang up the call
-        hangupButton.onclick = hangup;
-
-        function hangup() {
-             setStatus('Hanging up...');
-             updateButtons(false, false); // Reset buttons
-
-             // Stop tracks
-             if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localVideo.srcObject = null;
-             }
-             if (remoteVideo) {
-                 remoteVideo.srcObject = null;
-                 remoteVideo.classList.add('hidden'); // Hide remote video
-             }
-
-             // Close peer connection
-             if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-             }
-
-             // Remove Firebase listeners
-             if (offerListener) {
-                 offerListener.off();
-                 offerListener = null;
-             }
-             if (answerListener) {
-                 answerListener.off();
-                 answerListener = null;
-             }
-             if (localCandidateListener) {
-                 localCandidateListener.off();
-                 localCandidateListener = null;
-             }
-             if (remoteCandidateListener) {
-                 remoteCandidateListener.off();
-                 remoteCandidateListener = null;
-             }
-
-             // Optional: Clean up data in Firebase (only for the initiator or after confirmation)
-             // For a simple 2-person call, the initiator could clean up.
-             // In a real app, you'd need more robust session management.
-             if (currentCallId && callRef) {
-                 // We won't auto-delete here to allow the other user to see the call ended state,
-                 // but you could add a button/logic for cleanup.
-                 console.log(`Call ${currentCallId} ended.`);
-                 // callRef.remove(); // Uncomment this line to auto-delete the call entry
-             }
-
-             currentCallId = null;
-             callRef = null;
-             setStatus('Call ended. Idle.');
-        }
-
-
-        // Handle page unload to clean up
-        window.onbeforeunload = hangup;
-
-
+// Call the function when the page loads
+// window.addEventListener('load', setupControlVisibility);
     </script>
 
+    <script src="call.js"></script>
 </body>
 </html>
-
-
