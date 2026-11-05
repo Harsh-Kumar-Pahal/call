@@ -1,118 +1,441 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Call App</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database-compat.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="video.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f3">
+<title>Ring</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{
+  --bg:#f5f5f3; --surface:#ffffff; --ink:#101211; --muted:#8a908b; --line:#e7e7e3;
+  --go:#17a05d; --go-ink:#ffffff; --stop:#e5483a; --soft:#eeeeea;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0e0f0e; --surface:#171918; --ink:#f1f3f0; --muted:#7f8681; --line:#262a28;
+        --go:#2fc27a; --go-ink:#05140c; --stop:#f0604f; --soft:#202422;}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+svg{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
+.app{max-width:420px;margin:0 auto;min-height:100%;padding:20px 22px 32px;display:flex;flex-direction:column}
+.top{display:flex;justify-content:space-between;align-items:center;font-weight:700;letter-spacing:-.02em;font-size:18px}
+.state{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.state.on .dot{background:var(--go);box-shadow:0 0 0 4px color-mix(in srgb,var(--go) 22%,transparent)}
+.state.off .dot{background:var(--stop)}
+
+.me{text-align:center;padding:44px 0 34px}
+.avatar{width:84px;height:84px;border-radius:50%;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:34px;font-weight:700;background:var(--muted)}
+.me .label{color:var(--muted);font-size:13px;margin-bottom:4px}
+.me .name{font-size:44px;font-weight:800;letter-spacing:-.04em;line-height:1.05;word-break:break-all}
+.chips{display:flex;justify-content:center;gap:8px;margin-top:16px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--soft);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600}
+.chip svg{font-size:14px}
+.chip:disabled{opacity:.5}
+
+.dial{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px}
+.field{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:14px;padding:0 16px;margin-bottom:12px}
+.field span{color:var(--muted);font-weight:600;font-size:18px}
+.field input{flex:1;min-width:0;border:0;background:none;color:var(--ink);font:600 18px inherit;font-family:inherit;padding:16px 0;outline:none;letter-spacing:.01em}
+.field:focus-within{box-shadow:0 0 0 2px var(--ink)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;border-radius:14px;font-weight:700;font-size:15px;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn svg{font-size:19px}
+.btn.voice{background:var(--soft)} .btn.video{background:var(--go);color:var(--go-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.recent{margin-top:26px}
+.recent h3{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--muted)}
+.recent .list{display:flex;flex-wrap:wrap;gap:8px}
+.recent button{background:var(--surface);border:1px solid var(--line);padding:8px 14px;border-radius:999px;font-weight:600;font-size:14px}
+.recent button:hover{background:var(--soft)}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-size:14px;font-weight:500;max-width:90%;transition:.25s;z-index:50;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:30;backdrop-filter:blur(4px)}
+.scrim.show{display:flex}
+.sheet{width:100%;max-width:420px;background:var(--surface);border-radius:26px 26px 0 0;padding:28px 24px calc(28px + env(safe-area-inset-bottom,0px));text-align:center;
+  animation:up .25s ease}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@media(min-width:500px){.scrim{align-items:center}.sheet{border-radius:26px}}
+.sheet h2{margin:0 0 4px;font-size:22px;letter-spacing:-.02em}
+.sheet p{margin:0 0 20px;color:var(--muted);font-size:14px}
+.sheet .avatar{width:72px;height:72px;font-size:28px;margin-bottom:14px}
+.round-row{display:flex;justify-content:center;gap:26px}
+.round{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.round i{width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-style:normal;color:#fff}
+.round.no i{background:var(--stop)} .round.yes i{background:var(--go);color:var(--go-ink)}
+.edit input{width:100%;text-align:center;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:14px;
+  padding:16px;font:800 28px inherit;font-family:inherit;letter-spacing:-.02em;margin-bottom:8px;outline:none}
+.edit input:focus{border-color:var(--ink)}
+.edit .hint{min-height:20px;margin-bottom:12px;font-size:13px;color:var(--stop)}
+.edit .btns{margin-top:4px}
+
+/* call screen */
+.call{position:fixed;inset:0;background:#0b0d0c;color:#fff;display:none;z-index:40}
+.call.show{display:block}
+#remote{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#local{position:absolute;right:16px;top:calc(64px + env(safe-area-inset-top,0px));width:26vw;max-width:130px;min-width:90px;aspect-ratio:3/4;
+  object-fit:cover;border-radius:16px;background:#222;transform:scaleX(-1);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.voice-view{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  background:radial-gradient(circle at 50% 35%,#1b2a23,#0b0d0c 70%)}
+.voice-view .avatar{width:120px;height:120px;font-size:48px;margin-bottom:16px}
+.voice-view .pn{font-size:30px;font-weight:800;letter-spacing:-.03em}
+.pill{position:absolute;left:50%;transform:translateX(-50%);top:calc(16px + env(safe-area-inset-top,0px));background:rgba(0,0,0,.45);
+  backdrop-filter:blur(10px);padding:8px 16px;border-radius:999px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.controls{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:16px;padding:24px 16px calc(28px + env(safe-area-inset-bottom,0px))}
+.cbtn{width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:25px;color:#fff}
+.cbtn.active{background:#fff;color:#111}
+.cbtn.hang{background:var(--stop);color:#fff}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div id="setupPanel" class="setup-container">
-            <div class="header">
-                <h1>Video Call</h1>
-                <p>Start or join a secure video call</p>
-            </div>
 
-            <div class="card">
-                <div class="input-group">
-                    <input id="roomId" type="text" placeholder="Room ID" />
-                </div>
-                <div class="button-group">
-                    <button id="createButton" class="create-btn">
-                        <i class="fas fa-plus"></i>
-                        Create
-                    </button>
-                    <button id="joinButton" class="join-btn">
-                        <i class="fas fa-arrow-right"></i>
-                        Join
-                    </button>
-                </div>
-                
-                <div id="status" class="status">
-                    <div class="status-dot"></div>
-                    System ready
-                </div>
+<main class="app">
+  <div class="top">
+    <span>ring</span>
+    <span class="state" id="state"><i class="dot"></i><span id="stateTxt">Connecting</span></span>
+  </div>
 
-                <div id="error" class="error hidden"></div>
-            </div>
-        </div>
-
-        <div id="callPanel" class="hidden">
-            <div class="video-grid">
-                <div class="video-container" >
-                    <video id="localVideo" autoplay playsinline muted style="object-fit:contain;"></video>
-                </div>
-                <div class="video-container"  >
-                    <video id="remoteVideo" autoplay playsinline></video>
-                </div>
-            </div>
-        </div>
-
-        <div id="controls" class="controls hidden">
-            <button class="control-button" id="muteButton" title="Mute Audio"><i class="fa-solid fa-microphone fa-xl" style="color: rgb(0, 145, 255);"></i></button>
-            <button class="control-button" id="hangupButton" title="End Call"><i class="fa-solid fa-phone fa-xl" style="color: red; transform: rotate(135deg);"></i></button>
-            <button class="control-button" id="videoButton" title="Stop Video"><i class="fa-solid fa-video fa-xl" style="color: rgb(0, 255, 81);"></i></button>
-            <button class="control-button" title="flip Video" onclick="backCamera()"><i class="fa-solid fa-repeat fa-xl" style="color: #ffffff;"></i></button>
-        </div>
+  <section class="me">
+    <div class="avatar" id="meAv"></div>
+    <div class="label">Your username</div>
+    <div class="name" id="meName">····</div>
+    <div class="chips">
+      <button class="chip" id="copyBtn" disabled><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><span id="copyTxt">Copy</span></button>
+      <button class="chip" id="editBtn"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Change</button>
     </div>
+  </section>
 
-    <script>
+  <section class="dial">
+    <label class="field"><span>@</span><input id="target" placeholder="friend's username" maxlength="10" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Friend's username"></label>
+    <div class="btns">
+      <button class="btn voice" id="voiceBtn" disabled><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>Voice</button>
+      <button class="btn video" id="videoBtn" disabled><svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>Video</button>
+    </div>
+  </section>
 
+  <section class="recent" id="recent" hidden>
+    <h3>Recent</h3>
+    <div class="list" id="recentList"></div>
+  </section>
+</main>
 
+<!-- incoming call -->
+<div class="scrim" id="incoming">
+  <div class="sheet">
+    <div class="avatar" id="inAv"></div>
+    <h2 id="inName"></h2>
+    <p id="inType"></p>
+    <div class="round-row" id="inBtns"></div>
+  </div>
+</div>
 
-function setupControlVisibility() {
-    const controls = document.getElementById('controls');
-    let hideTimeout;
+<!-- change username -->
+<div class="scrim" id="editSheet">
+  <div class="sheet edit">
+    <h2>Your username</h2>
+    <p>3–10 letters or numbers. Friends use this to call you.</p>
+    <input id="editInput" maxlength="10" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="New username">
+    <div class="hint" id="editHint"></div>
+    <div class="btns">
+      <button class="btn voice" id="editCancel">Cancel</button>
+      <button class="btn video" id="editSave">Save</button>
+    </div>
+  </div>
+</div>
 
-    // Initially show controls
-    controls.classList.remove('hidden');
+<!-- call screen -->
+<div class="call" id="call">
+  <video id="remote" autoplay playsinline></video>
+  <div class="voice-view" id="voiceView"><div class="avatar" id="callAv"></div><div class="pn" id="callName"></div></div>
+  <div class="pill" id="pill">Calling…</div>
+  <video id="local" autoplay playsinline muted></video>
+  <div class="controls">
+    <button class="cbtn" id="muteBtn" aria-label="Mute microphone"></button>
+    <button class="cbtn" id="camBtn" aria-label="Turn camera off"></button>
+    <button class="cbtn hang" id="hangBtn" aria-label="End call"></button>
+  </div>
+</div>
 
-    // Hide controls after 2-3 seconds
-    hideTimeout = setTimeout(() => {
-        controls.classList.add('hidden');
-    }, 2500);
+<div class="toast" id="toast" role="status"></div>
 
-    // Function to handle visibility toggle
-    function toggleControlsVisibility(e) {
-        // Prevent interactions with control buttons
-        if (controls.contains(e.target)) return;
+<script>
+const $ = id => document.getElementById(id);
+const PREFIX = 'ringapp-';
+const ICE = { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' }
+]};
 
-        // Prevent multiple events
-        e.stopPropagation();
-        e.preventDefault();
+/* ---------- icons ---------- */
+const I = {
+  mic:'<svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>',
+  micOff:'<svg viewBox="0 0 24 24"><path d="m2 2 20 20M9 9v2a3 3 0 0 0 5.1 2.1M15 9.3V5a3 3 0 0 0-5.9-.6M19 10v1a7 7 0 0 1-.7 3M5 10v1a7 7 0 0 0 11 5.7M12 18v4"/></svg>',
+  cam:'<svg viewBox="0 0 24 24"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>',
+  camOff:'<svg viewBox="0 0 24 24"><path d="m2 2 20 20M16 16v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.7 0H14a2 2 0 0 1 2 2v3.3l1 1L22 8v8"/></svg>',
+  phone:'<svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>',
+  hang:'<svg viewBox="0 0 24 24" style="transform:rotate(135deg)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>'
+};
+$('muteBtn').innerHTML = I.mic; $('camBtn').innerHTML = I.cam; $('hangBtn').innerHTML = I.hang;
 
-        // If controls are hidden, show them
-        if (controls.classList.contains('hidden')) {
-            controls.classList.remove('hidden');
-            
-            // Clear previous timeout if exists
-            clearTimeout(hideTimeout);
+/* ---------- storage (safe) ---------- */
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch {} }
+};
 
-            // Automatically hide after 5-10 seconds
-            hideTimeout = setTimeout(() => {
-                controls.classList.add('hidden');
-            }, 7500);
-        } 
-        // If controls are visible, hide them
-        else {
-            controls.classList.add('hidden');
-        }
-    }
-
-    // Add event listeners for both touch and click events
-    document.body.addEventListener('touchend', toggleControlsVisibility, { passive: false });
-    document.body.addEventListener('mouseup', toggleControlsVisibility);
+/* ---------- helpers ---------- */
+function genName(){
+  const C='bdfgklmnprstvz', V='aeiou';
+  const p = s => s[Math.floor(Math.random()*s.length)];
+  let n = p(C)+p(V)+p(C)+p(V);
+  if (Math.random() < .5) n += p(C);
+  return n;
+}
+const cleanName = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const validName = s => /^[a-z0-9]{3,10}$/.test(s);
+function paint(el, name){
+  let h = 0; for (const ch of name) h = (h*31 + ch.charCodeAt(0)) % 360;
+  el.textContent = name ? name[0].toUpperCase() : '';
+  el.style.background = `hsl(${h} 50% 42%)`;
+}
+let toastT;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200);
+}
+function setState(kind, txt){
+  $('state').className = 'state ' + kind; $('stateTxt').textContent = txt;
+  const on = kind === 'on';
+  ['voiceBtn','videoBtn','copyBtn'].forEach(id => $(id).disabled = !on);
 }
 
-// Call the function when the page loads
-// window.addEventListener('load', setupControlVisibility);
-    </script>
+/* ---------- recent contacts ---------- */
+function getRecent(){ try { return JSON.parse(store.get('ring_recent') || '[]'); } catch { return []; } }
+function addRecent(name){
+  const list = [name, ...getRecent().filter(n => n !== name)].slice(0, 6);
+  store.set('ring_recent', JSON.stringify(list)); renderRecent();
+}
+function renderRecent(){
+  const list = getRecent();
+  $('recent').hidden = !list.length;
+  const box = $('recentList'); box.innerHTML = '';
+  list.forEach(n => {
+    const b = document.createElement('button'); b.textContent = '@' + n;
+    b.onclick = () => { $('target').value = n; $('target').focus(); };
+    box.appendChild(b);
+  });
+}
 
-    <script src="call.js"></script>
+/* ---------- connection ---------- */
+let peer, myName, call, localStream, pending, timerInt, startedAt, isVideo = false, ringT, ringCtx;
+
+function connect(name, opts = {}){
+  const attempt = opts.attempt || 0;
+  if (peer) { try { peer.destroy(); } catch {} }
+  myName = name;
+  $('meName').textContent = name; paint($('meAv'), name);
+  setState('', 'Connecting');
+  peer = new Peer(PREFIX + name, { config: ICE });
+  const mine = peer;
+
+  peer.on('open', () => {
+    if (peer !== mine) return;
+    store.set('ring_name', name);
+    setState('on', 'Online');
+    if (opts.onOk) opts.onOk();
+  });
+  peer.on('call', onIncoming);
+  peer.on('disconnected', () => { if (peer === mine && !mine.destroyed) { setState('off', 'Reconnecting'); mine.reconnect(); } });
+  peer.on('error', e => {
+    if (peer !== mine) return;
+    if (e.type === 'unavailable-id') {
+      // after a refresh the old session can linger for a few seconds: retry before giving up
+      if (!opts.custom && attempt < 4) { setState('', 'Reconnecting'); return setTimeout(() => connect(name, { ...opts, attempt: attempt + 1 }), 2000); }
+      if (opts.custom) { if (opts.onFail) opts.onFail('taken'); return connect(opts.fallback, { attempt: 0 }); }
+      const fresh = genName(); toast('Your old username was taken. You are now @' + fresh); return connect(fresh);
+    }
+    if (e.type === 'peer-unavailable') { toast('@' + ($('target').value || 'that user') + ' is not online'); endCall(true); return; }
+    if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error') { setState('off', 'Offline'); return; }
+    toast('Error: ' + e.type);
+  });
+}
+
+/* ---------- media ---------- */
+async function getMedia(video){
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+      video: video ? { facingMode: 'user' } : false
+    });
+  } catch {
+    toast(video ? 'Allow camera and microphone to call' : 'Allow microphone access to call');
+    return null;
+  }
+}
+
+/* ---------- outgoing ---------- */
+async function startCall(video){
+  const name = cleanName($('target').value);
+  if (!name) { $('target').focus(); return toast('Enter your friend’s username'); }
+  if (name === myName) return toast('That is your own username');
+  if (call) return;
+  localStream = await getMedia(video); if (!localStream) return;
+  isVideo = video;
+  call = peer.call(PREFIX + name, localStream, { metadata: { video } });
+  addRecent(name);
+  openCall(name);
+  bindCall(call);
+}
+
+/* ---------- incoming ---------- */
+function startRing(){
+  try {
+    ringCtx = ringCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const beep = () => { const o = ringCtx.createOscillator(), g = ringCtx.createGain();
+      o.frequency.value = 880; g.gain.value = .07; o.connect(g); g.connect(ringCtx.destination);
+      o.start(); o.stop(ringCtx.currentTime + .22); };
+    beep(); ringT = setInterval(beep, 1500);
+    if (navigator.vibrate) navigator.vibrate([300, 200, 300]);
+  } catch {}
+}
+const stopRing = () => { clearInterval(ringT); ringT = null; };
+const nameOf = c => c.peer.replace(PREFIX, '');
+
+function onIncoming(c){
+  if (call || pending) { c.close(); return; }
+  pending = c;
+  const v = !!(c.metadata && c.metadata.video), n = nameOf(c);
+  paint($('inAv'), n);
+  $('inName').textContent = '@' + n;
+  $('inType').textContent = v ? 'is video calling you' : 'is calling you';
+  const box = $('inBtns'); box.innerHTML = '';
+  const add = (cls, icon, label, fn) => { const b = document.createElement('button'); b.className = 'round ' + cls;
+    b.innerHTML = `<i>${icon}</i>${label}`; b.onclick = fn; box.appendChild(b); };
+  add('no', I.hang, 'Decline', decline);
+  add('yes', I.phone, v ? 'Voice only' : 'Answer', () => answer(false));
+  if (v) add('yes', I.cam, 'Video', () => answer(true));
+  $('incoming').classList.add('show');
+  startRing();
+}
+async function answer(video){
+  stopRing();
+  const c = pending; pending = null; $('incoming').classList.remove('show');
+  localStream = await getMedia(video);
+  if (!localStream) { c.close(); return; }
+  isVideo = video; call = c;
+  c.answer(localStream);
+  addRecent(nameOf(c));
+  openCall(nameOf(c));
+  bindCall(c);
+}
+function decline(){ stopRing(); if (pending) pending.close(); pending = null; $('incoming').classList.remove('show'); }
+
+/* ---------- call lifecycle ---------- */
+function bindCall(c){
+  c.on('stream', rs => {
+    const hasVideo = rs.getVideoTracks().length > 0;
+    $('remote').srcObject = rs;
+    $('remote').style.display = hasVideo ? 'block' : 'none';
+    $('voiceView').style.display = hasVideo ? 'none' : 'flex';
+    if (!startedAt) { startedAt = Date.now(); timerInt = setInterval(tick, 1000); tick(); }
+  });
+  c.on('close', () => endCall(true));
+  c.on('error', () => { toast('Call failed. Your network may block direct connections.'); endCall(true); });
+}
+function tick(){
+  const s = Math.floor((Date.now() - startedAt) / 1000);
+  $('pill').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+function openCall(name){
+  paint($('callAv'), name); $('callName').textContent = '@' + name;
+  $('pill').textContent = 'Calling…';
+  $('local').srcObject = localStream;
+  $('local').style.display = isVideo ? 'block' : 'none';
+  $('camBtn').style.display = isVideo ? 'flex' : 'none';
+  $('voiceView').style.display = isVideo ? 'none' : 'flex';
+  $('remote').style.display = isVideo ? 'block' : 'none';
+  $('muteBtn').classList.remove('active'); $('muteBtn').innerHTML = I.mic;
+  $('camBtn').classList.remove('active'); $('camBtn').innerHTML = I.cam;
+  $('call').classList.add('show');
+}
+function endCall(remoteClosed){
+  stopRing();
+  if (call && !remoteClosed) { try { call.close(); } catch {} }
+  call = null;
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  clearInterval(timerInt); timerInt = null; startedAt = null;
+  $('remote').srcObject = null; $('local').srcObject = null;
+  $('call').classList.remove('show');
+  if (pending) { pending = null; $('incoming').classList.remove('show'); }
+}
+
+/* ---------- call controls ---------- */
+$('muteBtn').onclick = () => {
+  const t = localStream && localStream.getAudioTracks()[0]; if (!t) return;
+  t.enabled = !t.enabled;
+  $('muteBtn').classList.toggle('active', !t.enabled);
+  $('muteBtn').innerHTML = t.enabled ? I.mic : I.micOff;
+};
+$('camBtn').onclick = () => {
+  const t = localStream && localStream.getVideoTracks()[0]; if (!t) return;
+  t.enabled = !t.enabled;
+  $('camBtn').classList.toggle('active', !t.enabled);
+  $('camBtn').innerHTML = t.enabled ? I.cam : I.camOff;
+};
+$('hangBtn').onclick = () => endCall(false);
+$('voiceBtn').onclick = () => startCall(false);
+$('videoBtn').onclick = () => startCall(true);
+$('target').addEventListener('input', e => { e.target.value = cleanName(e.target.value); });
+$('target').addEventListener('keydown', e => { if (e.key === 'Enter') startCall(false); });
+
+$('copyBtn').onclick = async () => {
+  try { await navigator.clipboard.writeText(myName); $('copyTxt').textContent = 'Copied'; }
+  catch { $('copyTxt').textContent = myName; }
+  setTimeout(() => $('copyTxt').textContent = 'Copy', 1500);
+};
+
+/* ---------- change username ---------- */
+const openEdit = () => { $('editInput').value = myName; $('editHint').textContent = ''; $('editSheet').classList.add('show'); setTimeout(() => $('editInput').select(), 50); };
+const closeEdit = () => $('editSheet').classList.remove('show');
+$('editBtn').onclick = openEdit;
+$('editCancel').onclick = closeEdit;
+$('editSheet').addEventListener('click', e => { if (e.target === $('editSheet')) closeEdit(); });
+$('editInput').addEventListener('input', e => { e.target.value = cleanName(e.target.value); });
+$('editInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('editSave').click(); });
+$('editSave').onclick = () => {
+  const n = cleanName($('editInput').value);
+  if (!validName(n)) { $('editHint').textContent = 'Use 3–10 letters or numbers.'; return; }
+  if (n === myName) return closeEdit();
+  if (call) { $('editHint').textContent = 'Finish your call first.'; return; }
+  const prev = myName;
+  closeEdit();
+  connect(n, { custom: true, fallback: prev,
+    onOk: () => toast('You are now @' + n),
+    onFail: () => toast('@' + n + ' is already taken') });
+};
+
+/* ---------- start ---------- */
+renderRecent();
+if (!navigator.mediaDevices) {
+  setState('off', 'HTTPS required');
+  toast('Calls need HTTPS. Host this file on a secure site.');
+} else {
+  connect(store.get('ring_name') || genName());
+}
+</script>
 </body>
 </html>
