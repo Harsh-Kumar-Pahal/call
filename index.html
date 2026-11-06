@@ -30,6 +30,12 @@
       --glass-shadow: 0 20px 50px -18px rgba(40, 70, 150, 0.35);
       --blur: blur(26px) saturate(1.6);
 
+      /* chat colors (iMessage style) */
+      --im-blue: #0a84ff;
+      --im-gray: #e9e9eb;
+      --im-line: #e5e5ea;
+      --im-text-muted: #8e8e93;
+
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     }
 
@@ -370,6 +376,11 @@
       transform: translate(-50%, 0);
     }
 
+    /* while on a call, keep the toast above the buttons */
+    .call.show ~ .toast {
+      bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+    }
+
 
     /* =========================================================
        6. OVERLAYS  (incoming call + add person)
@@ -548,6 +559,7 @@
       display: grid;
       grid-auto-rows: 1fr;
       grid-template-columns: 1fr;
+      transition: padding 0.35s ease;
     }
 
     .grid:not([data-n="1"]) {
@@ -556,6 +568,14 @@
         calc(64px + env(safe-area-inset-top, 0px))
         8px
         calc(96px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* controls hidden: people get the whole screen */
+    .call.hide-ui .grid:not([data-n="1"]) {
+      padding:
+        calc(8px + env(safe-area-inset-top, 0px))
+        8px
+        calc(8px + env(safe-area-inset-bottom, 0px));
     }
 
     .grid[data-n="3"],
@@ -657,6 +677,7 @@
       font-weight: 600;
       letter-spacing: 0.04em;
       white-space: nowrap;
+      transition: opacity 0.35s ease, transform 0.35s ease;
     }
 
     .live {
@@ -695,6 +716,7 @@
       background: #b9c9e3;
       border: 2px solid rgba(255, 255, 255, 0.9);
       box-shadow: 0 14px 34px -8px rgba(10, 22, 48, 0.45);
+      transition: opacity 0.35s ease;
     }
 
     #local.mirror {
@@ -713,21 +735,23 @@
       transform: translateX(-50%);
       z-index: 3;
       display: flex;
-      gap: 10px;
-      padding: 10px;
+      gap: 8px;
+      padding: 8px;
       border-radius: 999px;
+      transition: opacity 0.35s ease, transform 0.35s ease;
     }
 
     .dock-btn {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.7);
       border: 1px solid var(--glass-border);
-      font-size: 21px;
+      font-size: 20px;
       transition: transform 0.15s;
     }
 
@@ -745,6 +769,41 @@
       border-color: transparent;
       color: #ffffff;
       box-shadow: 0 10px 22px -8px var(--stop);
+    }
+
+    /* number of unread chat messages */
+    .badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      border: 2px solid #ffffff;
+      border-radius: 10px;
+      background: var(--stop);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* ----- fade the controls and my camera after a few seconds ----- */
+    .call.hide-ui .hud,
+    .call.hide-ui .dock,
+    .call.hide-ui #local {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .call.hide-ui .hud {
+      transform: translate(-50%, -12px);
+    }
+
+    .call.hide-ui .dock {
+      transform: translate(-50%, 16px);
     }
 
     /* ----- voice call view: small and centered ----- */
@@ -836,7 +895,483 @@
 
 
     /* =========================================================
-       8. LAPTOP TWEAKS
+       8. CHAT  (iMessage look: blue bubbles on the right,
+          gray bubbles on the left)
+       ========================================================= */
+    .chat {
+      position: absolute;
+      inset: 0;                      /* phones: takes the whole screen */
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+      background: #ffffff;
+      color: #000000;
+    }
+
+    .chat.show {
+      display: flex;
+      animation: chat-up 0.28s ease;
+    }
+
+    @keyframes chat-up {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: none;
+        opacity: 1;
+      }
+    }
+
+    /* ----- top bar ----- */
+    .chat-head {
+      flex: none;
+      display: grid;
+      grid-template-columns: 90px 1fr 90px;
+      align-items: center;
+      min-height: 62px;
+      padding: env(safe-area-inset-top, 0px) 6px 0;
+      background: rgba(247, 247, 249, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--im-line);
+    }
+
+    .chat-back {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      width: fit-content;
+      padding: 10px 8px;
+      color: var(--im-blue);
+      font-size: 17px;
+    }
+
+    .chat-back svg {
+      font-size: 24px;
+      stroke-width: 2.4;
+    }
+
+    .chat-title {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
+      padding: 6px 0;
+    }
+
+    .stack {
+      display: flex;
+    }
+
+    .stack .avatar {
+      width: 30px;
+      height: 30px;
+      margin-left: -8px;
+      border: 2px solid #f7f7f9;
+      font-size: 13px;
+    }
+
+    .stack .avatar:first-child {
+      margin-left: 0;
+    }
+
+    .chat-names {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+
+    /* ----- messages ----- */
+    .msgs {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px 8px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .msgs:empty::before {
+      content: "Messages, photos, videos and files go straight to the people on this call. They disappear when the call ends.";
+      margin: auto;
+      max-width: 260px;
+      color: var(--im-text-muted);
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .sep {
+      margin: 12px 0 6px;
+      color: var(--im-text-muted);
+      font-size: 11.5px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      margin-top: 2px;
+    }
+
+    .msg.first {
+      margin-top: 10px;
+    }
+
+    .msg.me {
+      align-items: flex-end;
+    }
+
+    .msg.them {
+      align-items: flex-start;
+    }
+
+    .who {
+      margin: 0 0 2px 14px;
+      color: var(--im-text-muted);
+      font-size: 11.5px;
+    }
+
+    .bubble {
+      position: relative;
+      max-width: 78%;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 16px;
+      line-height: 1.3;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .me .bubble {
+      background: var(--im-blue);
+      color: #ffffff;
+    }
+
+    .them .bubble {
+      background: var(--im-gray);
+      color: #000000;
+    }
+
+    .bubble a {
+      color: inherit;
+      text-decoration: underline;
+    }
+
+    .them .bubble a {
+      color: var(--im-blue);
+    }
+
+    /* the little curved tail on the last bubble of a group */
+    .bubble.tail::before,
+    .bubble.tail::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      height: 20px;
+    }
+
+    .me .bubble.tail::before {
+      right: -8px;
+      width: 20px;
+      background: var(--im-blue);
+      border-bottom-left-radius: 16px 14px;
+    }
+
+    .me .bubble.tail::after {
+      right: -26px;
+      width: 26px;
+      background: #ffffff;
+      border-bottom-left-radius: 10px;
+    }
+
+    .them .bubble.tail::before {
+      left: -8px;
+      width: 20px;
+      background: var(--im-gray);
+      border-bottom-right-radius: 16px 14px;
+    }
+
+    .them .bubble.tail::after {
+      left: -26px;
+      width: 26px;
+      background: #ffffff;
+      border-bottom-right-radius: 10px;
+    }
+
+    .delivery {
+      margin: 3px 4px 0 0;
+      color: var(--im-text-muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .delivery.bad {
+      color: var(--stop);
+    }
+
+    /* photos and videos have no colored bubble */
+    .bubble.media {
+      padding: 0;
+      overflow: hidden;
+      background: none;
+      line-height: 0;
+    }
+
+    .bubble.media.tail::before,
+    .bubble.media.tail::after {
+      display: none;
+    }
+
+    .bubble.media img,
+    .bubble.media video {
+      display: block;
+      max-width: min(260px, 100%);
+      max-height: 340px;
+      border-radius: 18px;
+      background: var(--im-gray);
+      cursor: zoom-in;
+    }
+
+    .bubble.media video {
+      cursor: auto;
+    }
+
+    /* save button on top of photos and videos */
+    .save {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #ffffff;
+      font-size: 16px;
+      text-decoration: none;
+    }
+
+    /* files */
+    .file-card {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 190px;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .bubble .file-card {
+      text-decoration: none;
+    }
+
+    .file-icon {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.28);
+      font-size: 22px;
+    }
+
+    .them .file-icon {
+      background: rgba(0, 0, 0, 0.07);
+    }
+
+    .file-text {
+      flex: 1;
+      min-width: 0;
+      line-height: 1.25;
+    }
+
+    .file-name {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .file-size {
+      display: block;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    .file-down {
+      flex: none;
+      font-size: 20px;
+      opacity: 0.85;
+    }
+
+    /* upload / download progress line */
+    .bar {
+      display: block;
+      height: 3px;
+      margin-top: 7px;
+      overflow: hidden;
+      border-radius: 2px;
+      background: rgba(120, 120, 128, 0.3);
+    }
+
+    .bar i {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: currentColor;
+      transition: width 0.15s linear;
+    }
+
+    .bubble.media .bar {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 8px;
+      margin: 0;
+      color: #ffffff;
+    }
+
+    /* ----- message box ----- */
+    .composer {
+      flex: none;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+      background: #ffffff;
+      border-top: 1px solid var(--im-line);
+    }
+
+    .plus {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 1px;
+      border-radius: 50%;
+      background: var(--im-gray);
+      color: #5b5b62;
+      font-size: 20px;
+    }
+
+    .input-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .input-wrap textarea {
+      display: block;
+      width: 100%;
+      min-height: 36px;
+      max-height: 120px;
+      padding: 7px 42px 7px 14px;
+      resize: none;
+      border: 1px solid #d1d1d6;
+      border-radius: 19px;
+      outline: none;
+      background: #ffffff;
+      color: #000000;
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .input-wrap textarea:focus {
+      border-color: #b8b8be;
+    }
+
+    .send {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--im-blue);
+      color: #ffffff;
+      font-size: 17px;
+    }
+
+    .send svg {
+      stroke-width: 2.6;
+    }
+
+    .composer.has-text .send {
+      display: flex;
+    }
+
+    /* ----- photo / video viewer ----- */
+    .viewer {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.92);
+    }
+
+    .viewer.show {
+      display: flex;
+    }
+
+    .viewer img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .viewer-close,
+    .viewer-save {
+      position: absolute;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      font-size: 22px;
+      text-decoration: none;
+    }
+
+    .viewer-close {
+      left: 14px;
+    }
+
+    .viewer-save {
+      right: 14px;
+    }
+
+
+    /* =========================================================
+       9. LAPTOP TWEAKS
        ========================================================= */
     @media (min-width: 900px) {
 
@@ -845,6 +1380,35 @@
         right: 20px;
         width: 170px;
         max-width: 170px;
+      }
+
+      .dock {
+        gap: 10px;
+        padding: 10px;
+      }
+
+      .dock-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 21px;
+      }
+
+      /* chat becomes a side panel on a big screen */
+      .chat {
+        inset: 16px 16px 16px auto;
+        width: 390px;
+        overflow: hidden;
+        border-radius: 26px;
+        box-shadow: 0 30px 80px -20px rgba(20, 40, 100, 0.5);
+      }
+
+      .chat-head {
+        padding-top: 0;
+      }
+
+      .viewer {
+        position: fixed;
+        z-index: 400;
       }
     }
 
@@ -926,12 +1490,44 @@
 
     <video id="local" autoplay playsinline muted></video>
 
-    <div class="glass dock">
+    <div class="glass dock" id="dock">
       <button class="dock-btn" id="muteBtn" aria-label="Mute microphone"></button>
       <button class="dock-btn" id="camBtn" aria-label="Turn camera off"></button>
       <button class="dock-btn" id="flipBtn" aria-label="Switch camera"></button>
+      <button class="dock-btn" id="chatBtn" aria-label="Open chat"></button>
       <button class="dock-btn" id="addBtn" aria-label="Add a person"></button>
       <button class="dock-btn hang" id="hangBtn" aria-label="End call"></button>
+    </div>
+
+    <!-- chat -->
+    <section class="chat" id="chat" aria-label="Chat">
+      <header class="chat-head">
+        <button class="chat-back" id="chatBack" aria-label="Back to the call"></button>
+        <div class="chat-title">
+          <div class="stack" id="chatStack"></div>
+          <div class="chat-names" id="chatNames">Chat</div>
+        </div>
+        <span></span>
+      </header>
+
+      <div class="msgs" id="msgs"></div>
+
+      <form class="composer" id="composer">
+        <button type="button" class="plus" id="attachBtn" aria-label="Send a photo, video or file"></button>
+        <div class="input-wrap">
+          <textarea id="chatInput" rows="1" placeholder="Message" aria-label="Message"
+                    enterkeyhint="send" autocomplete="off"></textarea>
+          <button type="submit" class="send" id="sendBtn" aria-label="Send"></button>
+        </div>
+        <input type="file" id="filePick" multiple hidden>
+      </form>
+    </section>
+
+    <!-- full screen photo viewer -->
+    <div class="viewer" id="viewer">
+      <img id="viewerImg" alt="">
+      <button class="viewer-close" id="viewerClose" aria-label="Close"></button>
+      <a class="viewer-save" id="viewerSave" aria-label="Save"></a>
     </div>
 
   </div>
@@ -965,9 +1561,15 @@
        ========================================================= */
 
     // most people allowed in one call (you + others). Change it if you like.
-    const MAX_PEOPLE = 6;
+    const MAX_PEOPLE = 5;
 
-    const PREFIX = 'ringapp-';
+    // biggest file you can send in chat (in megabytes)
+    const MAX_FILE_MB = 25;
+
+    // seconds before the buttons and your own camera fade away during a video call
+    const HIDE_AFTER_MS = 3500;
+
+    const PREFIX = 'call-';
 
     const ICE = {
       iceServers: [
@@ -991,6 +1593,12 @@
       camOff: '<svg viewBox="0 0 24 24"><path d="m2 2 20 20M16 16v1a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.7 0H14a2 2 0 0 1 2 2v3.3l1 1L22 8v8"/></svg>',
       flip: '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>',
       plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+      chat: '<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12Z"/></svg>',
+      back: '<svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>',
+      send: '<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+      file: '<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>',
+      download: '<svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
+      close: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
       phone: '<svg viewBox="0 0 24 24"><path d="' + PHONE_PATH + '"/></svg>',
       hang: '<svg viewBox="0 0 24 24" style="transform:rotate(135deg)"><path d="' + PHONE_PATH + '"/></svg>'
     };
@@ -1000,8 +1608,14 @@
     $('muteBtn').innerHTML = ICONS.mic;
     $('camBtn').innerHTML = ICONS.cam;
     $('flipBtn').innerHTML = ICONS.flip;
+    $('chatBtn').innerHTML = ICONS.chat;
     $('addBtn').innerHTML = ICONS.plus;
     $('hangBtn').innerHTML = ICONS.hang;
+    $('chatBack').innerHTML = ICONS.back + 'Call';
+    $('attachBtn').innerHTML = ICONS.plus;
+    $('sendBtn').innerHTML = ICONS.send;
+    $('viewerClose').innerHTML = ICONS.close;
+    $('viewerSave').innerHTML = ICONS.download;
 
     // keeps your handle the same after a refresh (no login, nothing else is saved)
     const store = {
@@ -1037,6 +1651,9 @@
     const cleanName = text => (text || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const validName = text => /^[a-z0-9]{3,10}$/.test(text);
     const handleOf = conn => conn.peer.replace(PREFIX, '');
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const isDesktop = () => window.matchMedia('(min-width: 900px)').matches;
 
     // colored circle with the first letter
     function paint(element, name) {
@@ -1078,7 +1695,7 @@
 
     const calls = new Map();     // handle -> media connection (everyone in the call)
     const tiles = new Map();     // handle -> video tile on screen
-    const datas = new Map();     // handle -> small message channel
+    const datas = new Map();     // handle -> message channel (invites + chat + files)
     const expected = new Map();  // handle -> time until we accept them automatically
 
 
@@ -1178,7 +1795,7 @@
       });
 
       peer.on('call', onIncoming);
-      peer.on('connection', onDataConnection);
+      peer.on('connection', setupChannel);
 
       peer.on('disconnected', () => {
         if (peer === thisPeer && !thisPeer.destroyed) {
@@ -1218,30 +1835,95 @@
       });
     }
 
-    // small messages between people already in a call (used to add new people)
-    function onDataConnection(channel) {
-      channel.on('data', message => {
-        const from = handleOf(channel);
 
-        if (message && message.t === 'invite' && validName(message.h) && calls.has(from)) {
-          expected.set(message.h, Date.now() + 120000);
+    /* =========================================================
+       MESSAGE CHANNELS  (small direct links between people in
+       a call: used for invites, chat text, photos and files)
+       ========================================================= */
+    function setupChannel(channel) {
+      const handle = handleOf(channel);
+
+      const register = () => {
+        const current = datas.get(handle);
+        if (!current || !current.open) datas.set(handle, channel);
+      };
+      const forget = () => {
+        if (datas.get(handle) === channel) datas.delete(handle);
+      };
+
+      channel.on('data', message => onChannelData(channel, message));
+      channel.on('open', register);
+      channel.on('close', forget);
+      channel.on('error', forget);
+
+      if (channel.open) register();
+    }
+
+    // returns a channel that is ready to send to this person
+    function getChannel(handle) {
+      return new Promise((resolve, reject) => {
+        let channel = datas.get(handle);
+
+        if (channel && channel.open) {
+          resolve(channel);
+          return;
         }
+
+        if (!channel) {
+          channel = peer.connect(PREFIX + handle, { reliable: true });
+          datas.set(handle, channel);
+          setupChannel(channel);
+        }
+
+        const timer = setTimeout(() => reject(new Error('timeout')), 8000);
+
+        channel.on('open', () => {
+          clearTimeout(timer);
+          resolve(channel);
+        });
+        channel.on('error', error => {
+          clearTimeout(timer);
+          reject(error);
+        });
       });
     }
 
     function sendTo(handle, message) {
-      let channel = datas.get(handle);
+      getChannel(handle).then(channel => channel.send(message)).catch(() => {});
+    }
 
-      if (channel && channel.open) {
-        channel.send(message);
+    // anything that arrives from another person in the call
+    function onChannelData(channel, message) {
+      const from = handleOf(channel);
+
+      // only people who are in our call may talk to us
+      if (!message || !calls.has(from)) return;
+
+      if (message.t === 'invite') {
+        if (validName(message.h)) expected.set(message.h, Date.now() + 120000);
         return;
       }
 
-      channel = peer.connect(PREFIX + handle, { reliable: true });
-      datas.set(handle, channel);
-      channel.on('open', () => channel.send(message));
-      channel.on('close', () => datas.delete(handle));
-      channel.on('error', () => datas.delete(handle));
+      if (message.t === 'chat') {
+        if (typeof message.text !== 'string') return;
+        addMessage({ mine: false, from: from, text: message.text.slice(0, 4000), time: Date.now() });
+        notifyChat(from, message.text);
+        return;
+      }
+
+      if (message.t === 'file') {
+        receiveFileStart(from, message);
+        return;
+      }
+
+      if (message.t === 'chunk') {
+        receiveFileChunk(from, message);
+        return;
+      }
+
+      if (message.t === 'end') {
+        receiveFileEnd(from, message);
+      }
     }
 
 
@@ -1376,6 +2058,56 @@
 
 
     /* =========================================================
+       FADING CONTROLS  (buttons + my own camera disappear after
+       a few seconds so everyone can see each other. Tap the
+       screen to bring them back.)
+       ========================================================= */
+    let hideTimer;
+
+    function canAutoHide() {
+      return $('call').classList.contains('show')
+        && !$('call').classList.contains('voice-mode')
+        && !$('chat').classList.contains('show')
+        && !$('addSheet').classList.contains('show');
+    }
+
+    function showControls() {
+      clearTimeout(hideTimer);
+      $('call').classList.remove('hide-ui');
+
+      if (canAutoHide()) {
+        hideTimer = setTimeout(hideControls, HIDE_AFTER_MS);
+      }
+    }
+
+    function hideControls() {
+      if (canAutoHide()) {
+        $('call').classList.add('hide-ui');
+      }
+    }
+
+    // tap on the video to hide or show the controls
+    $('call').addEventListener('click', event => {
+      if (event.target.closest('.dock, .hud, .chat, .viewer')) return;
+
+      if ($('call').classList.contains('hide-ui')) {
+        showControls();
+      } else if (canAutoHide()) {
+        clearTimeout(hideTimer);
+        $('call').classList.add('hide-ui');
+      }
+    });
+
+    // laptop: moving the mouse also brings the controls back
+    $('call').addEventListener('pointermove', event => {
+      if (event.pointerType === 'mouse' && $('call').classList.contains('hide-ui')) showControls();
+    });
+
+    // using a button keeps the controls on screen a little longer
+    $('dock').addEventListener('pointerdown', showControls);
+
+
+    /* =========================================================
        PEOPLE IN THE CALL  (tiles on screen)
        ========================================================= */
     function makeTile(handle) {
@@ -1443,6 +2175,7 @@
       if (!startedAt) {
         startedAt = Date.now();
         timerInterval = setInterval(tick, 1000);
+        showControls();
       }
 
       tick();
@@ -1456,6 +2189,12 @@
       if (tile) {
         tile.remove();
         tiles.delete(handle);
+      }
+
+      const channel = datas.get(handle);
+      if (channel) {
+        try { channel.close(); } catch (e) { /* ignore */ }
+        datas.delete(handle);
       }
 
       removeAudioSource(handle);
@@ -1484,6 +2223,11 @@
       $('grid').dataset.n = Math.max(names.length, 1);
       $('call').classList.toggle('voice-mode', !isVideo && !anyVideo);
 
+      // voice calls keep the buttons on screen all the time
+      if ($('call').classList.contains('voice-mode')) {
+        $('call').classList.remove('hide-ui');
+      }
+
       // list used by the voice call view
       const box = $('people');
       box.innerHTML = '';
@@ -1504,6 +2248,7 @@
         box.appendChild(person);
       });
 
+      updateChatHead();
       tick();
     }
 
@@ -1651,6 +2396,7 @@
       $('local').srcObject = localStream;
       $('local').classList.add('mirror');
 
+      $('call').classList.remove('hide-ui');
       $('call').classList.toggle('has-local', isVideo);
       $('call').classList.toggle('voice-mode', !isVideo);
 
@@ -1662,8 +2408,11 @@
       $('camBtn').classList.remove('active');
       $('camBtn').innerHTML = ICONS.cam;
 
+      resetChat();
+
       $('call').classList.add('show');
       startWave();
+      showControls();
 
       try {
         wakeLock = await navigator.wakeLock.request('screen');
@@ -1801,6 +2550,7 @@
         toast('This call is full (' + MAX_PEOPLE + ' people)');
         return;
       }
+      clearTimeout(hideTimer);
       $('addCount').textContent = (calls.size + 1) + ' of ' + MAX_PEOPLE + ' people in this call';
       $('addInput').value = '';
       $('addSheet').classList.add('show');
@@ -1810,6 +2560,7 @@
     function closeAdd() {
       $('addSheet').classList.remove('show');
       $('addInput').blur();
+      if ($('call').classList.contains('show')) showControls();
     }
 
     function addPerson() {
@@ -1849,15 +2600,570 @@
 
 
     /* =========================================================
+       CHAT  (text, links, photos, videos, files)
+       ========================================================= */
+    const CHUNK_SIZE = 12 * 1024;       // size of each piece of a file we send
+
+    const chat = {
+      unread: 0,
+      lastTime: 0,                      // time of the newest message
+      last: null,                       // { mine, from, time, bubble } of the newest message
+      delivery: null                    // the small "Delivered" label under my last message
+    };
+
+    const incomingFiles = new Map();    // files that are still arriving
+    const fileUrls = [];                // download links we created (cleaned up after the call)
+
+    const isChatOpen = () => $('chat').classList.contains('show');
+
+    /* ---------- small helpers ---------- */
+    function kindOf(mime) {
+      mime = String(mime || '');
+      if (mime.startsWith('image/')) return 'image';
+      if (mime.startsWith('video/')) return 'video';
+      return 'file';
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function formatStamp(time) {
+      return 'Today ' + new Date(time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    // turns web addresses inside a message into clickable links
+    function linkify(text) {
+      const fragment = document.createDocumentFragment();
+      const pattern = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
+      let lastIndex = 0;
+      let match;
+
+      while ((match = pattern.exec(text))) {
+        let url = match[0];
+        let trailing = '';
+
+        const tail = url.match(/[.,!?;:)\]]+$/);
+        if (tail) {
+          trailing = tail[0];
+          url = url.slice(0, -trailing.length);
+        }
+
+        if (match.index > lastIndex) fragment.append(text.slice(lastIndex, match.index));
+
+        const link = document.createElement('a');
+        link.href = url.startsWith('www.') ? 'https://' + url : url;
+        link.textContent = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        fragment.append(link);
+
+        if (trailing) fragment.append(trailing);
+        lastIndex = match.index + match[0].length;
+      }
+
+      if (lastIndex < text.length) fragment.append(text.slice(lastIndex));
+      return fragment;
+    }
+
+    /* ---------- the people shown at the top of the chat ---------- */
+    function updateChatHead() {
+      const names = Array.from(tiles.keys());
+
+      const stack = $('chatStack');
+      stack.innerHTML = '';
+      names.slice(0, 4).forEach(name => {
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        paint(avatar, name);
+        stack.appendChild(avatar);
+      });
+
+      $('chatNames').textContent = names.length ? names.map(name => '@' + name).join(', ') : 'Chat';
+    }
+
+    /* ---------- open / close ---------- */
+    // on phones the chat is a full screen, so follow the on-screen keyboard
+    function fitChat() {
+      const el = $('chat');
+      const vv = window.visualViewport;
+
+      if (!vv || isDesktop() || !isChatOpen()) {
+        el.style.top = '';
+        el.style.bottom = '';
+        el.style.height = '';
+        return;
+      }
+
+      el.style.bottom = 'auto';
+      el.style.top = vv.offsetTop + 'px';
+      el.style.height = vv.height + 'px';
+    }
+
+    function scrollMessagesToBottom() {
+      const list = $('msgs');
+      list.scrollTop = list.scrollHeight;
+    }
+
+    function openChat() {
+      clearTimeout(hideTimer);
+      $('call').classList.remove('hide-ui');
+      $('chat').classList.add('show');
+
+      chat.unread = 0;
+      updateBadge();
+      updateChatHead();
+      fitChat();
+      scrollMessagesToBottom();
+
+      // laptop: ready to type. Phone: don't pop the keyboard up by itself.
+      if (isDesktop()) setTimeout(() => $('chatInput').focus(), 60);
+    }
+
+    function closeChat() {
+      $('chat').classList.remove('show');
+      $('chatInput').blur();
+      fitChat();
+      closeViewer();
+      if ($('call').classList.contains('show')) showControls();
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        fitChat();
+        scrollMessagesToBottom();
+      });
+      window.visualViewport.addEventListener('scroll', fitChat);
+    }
+
+    $('chatBtn').onclick = () => (isChatOpen() ? closeChat() : openChat());
+    $('chatBack').onclick = closeChat;
+
+    /* ---------- unread badge + new message alert ---------- */
+    function updateBadge() {
+      const old = $('chatBtn').querySelector('.badge');
+      if (old) old.remove();
+
+      if (chat.unread > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = chat.unread > 9 ? '9+' : chat.unread;
+        $('chatBtn').appendChild(badge);
+      }
+    }
+
+    function notifyChat(from, preview) {
+      if (isChatOpen()) return;
+
+      chat.unread += 1;
+      updateBadge();
+      showControls();
+
+      try { beep(1200, 0, 0.08, 0.06); } catch (e) { /* ignore */ }
+      toast('@' + from + ': ' + (preview.length > 60 ? preview.slice(0, 60) + '…' : preview));
+    }
+
+    /* ---------- drawing messages ---------- */
+    function fillAttachment(bubble, file) {
+      bubble.innerHTML = '';
+      bubble.classList.remove('loading');
+
+      if (file.kind === 'image') {
+        bubble.classList.add('media');
+
+        const image = document.createElement('img');
+        image.src = file.url;
+        image.alt = file.name;
+        image.onclick = () => openViewer(file);
+        bubble.appendChild(image);
+        bubble.appendChild(buildSaveButton(file));
+        return;
+      }
+
+      if (file.kind === 'video') {
+        bubble.classList.add('media');
+
+        const video = document.createElement('video');
+        video.src = file.url;
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        bubble.appendChild(video);
+        bubble.appendChild(buildSaveButton(file));
+        return;
+      }
+
+      // any other file: a card the other person can tap to download
+      const card = document.createElement('a');
+      card.className = 'file-card';
+      card.href = file.url;
+      card.download = file.name;
+
+      const icon = document.createElement('div');
+      icon.className = 'file-icon';
+      icon.innerHTML = ICONS.file;
+
+      const text = document.createElement('div');
+      text.className = 'file-text';
+
+      const name = document.createElement('span');
+      name.className = 'file-name';
+      name.textContent = file.name;
+
+      const size = document.createElement('span');
+      size.className = 'file-size';
+      size.textContent = formatSize(file.size);
+
+      const down = document.createElement('div');
+      down.className = 'file-down';
+      down.innerHTML = ICONS.download;
+
+      text.append(name, size);
+      card.append(icon, text, down);
+      bubble.appendChild(card);
+    }
+
+    function buildSaveButton(file) {
+      const link = document.createElement('a');
+      link.className = 'save';
+      link.href = file.url;
+      link.download = file.name;
+      link.setAttribute('aria-label', 'Save ' + file.name);
+      link.innerHTML = ICONS.download;
+      return link;
+    }
+
+    function buildProgressBar() {
+      const bar = document.createElement('span');
+      bar.className = 'bar';
+      bar.innerHTML = '<i></i>';
+      return bar;
+    }
+
+    // adds one message to the chat and returns small helpers to update it later
+    function addMessage(message) {
+      const list = $('msgs');
+      const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+      const time = message.time || Date.now();
+
+      // a small time label for the first message, and after a long pause
+      if (!chat.lastTime || time - chat.lastTime > 10 * 60 * 1000) {
+        const stamp = document.createElement('div');
+        stamp.className = 'sep';
+        stamp.textContent = formatStamp(time);
+        list.appendChild(stamp);
+        chat.last = null;
+      }
+      chat.lastTime = time;
+
+      // messages from the same person close together are grouped
+      const grouped = !!chat.last
+        && chat.last.mine === message.mine
+        && chat.last.from === message.from
+        && time - chat.last.time < 3 * 60 * 1000;
+
+      if (grouped) chat.last.bubble.classList.remove('tail');
+
+      if (chat.delivery) {
+        chat.delivery.remove();
+        chat.delivery = null;
+      }
+
+      const row = document.createElement('div');
+      row.className = 'msg ' + (message.mine ? 'me' : 'them') + (grouped ? '' : ' first');
+
+      // in a group call, show who sent it
+      if (!message.mine && !grouped && tiles.size > 1) {
+        const who = document.createElement('div');
+        who.className = 'who';
+        who.textContent = '@' + message.from;
+        row.appendChild(who);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble tail';
+      row.appendChild(bubble);
+
+      let bar = null;
+
+      if (message.file && message.url) {
+        fillAttachment(bubble, message.file);
+      } else if (message.file) {
+        // still arriving: show the name and a progress line
+        bubble.classList.add('loading');
+
+        const label = document.createElement('span');
+        label.textContent = 'Receiving ' + message.file.name + '…';
+        bubble.appendChild(label);
+      } else {
+        bubble.appendChild(linkify(message.text));
+      }
+
+      if (message.progress) {
+        bar = buildProgressBar();
+        bubble.appendChild(bar);
+      }
+
+      list.appendChild(row);
+      chat.last = { mine: message.mine, from: message.from, time: time, bubble: bubble };
+
+      if (nearBottom || message.mine) scrollMessagesToBottom();
+
+      return {
+        row: row,
+        bubble: bubble,
+
+        setProgress(fraction) {
+          if (bar) bar.firstChild.style.width = Math.round(fraction * 100) + '%';
+        },
+
+        // the whole file arrived: show it
+        complete(file) {
+          if (bar) {
+            bar.remove();
+            bar = null;
+          }
+          fillAttachment(bubble, file);
+          if (isChatOpen()) scrollMessagesToBottom();
+        },
+
+        // small gray status under my newest message
+        setDelivery(text, failed) {
+          if (chat.delivery) chat.delivery.remove();
+          const label = document.createElement('div');
+          label.className = 'delivery' + (failed ? ' bad' : '');
+          label.textContent = text;
+          row.appendChild(label);
+          chat.delivery = label;
+        }
+      };
+    }
+
+    /* ---------- people who can receive right now ---------- */
+    function chatTargets() {
+      return Array.from(calls.keys()).filter(handle => {
+        const tile = tiles.get(handle);
+        return tile && !tile.classList.contains('pending');
+      });
+    }
+
+    /* ---------- sending text ---------- */
+    async function sendText() {
+      const text = $('chatInput').value.trim();
+      if (!text) return;
+
+      const targets = chatTargets();
+      if (!targets.length) {
+        toast('No one has joined the call yet');
+        return;
+      }
+
+      const time = Date.now();
+      const item = addMessage({ mine: true, from: myName, text: text, time: time });
+
+      $('chatInput').value = '';
+      growInput();
+
+      const payload = { t: 'chat', id: uid(), text: text };
+      const results = await Promise.allSettled(
+        targets.map(handle => getChannel(handle).then(channel => channel.send(payload)))
+      );
+
+      const delivered = results.some(result => result.status === 'fulfilled');
+      item.setDelivery(delivered ? 'Delivered' : 'Not delivered', !delivered);
+    }
+
+    /* ---------- sending photos, videos and files ---------- */
+    async function sendFile(file) {
+      if (file.size > MAX_FILE_MB * 1048576) {
+        toast('"' + file.name + '" is too big (max ' + MAX_FILE_MB + ' MB)');
+        return;
+      }
+
+      const targets = chatTargets();
+      if (!targets.length) {
+        toast('No one has joined the call yet');
+        return;
+      }
+
+      const url = URL.createObjectURL(file);
+      fileUrls.push(url);
+
+      const info = {
+        kind: kindOf(file.type),
+        name: file.name || 'file',
+        size: file.size,
+        mime: file.type || 'application/octet-stream',
+        url: url
+      };
+
+      const item = addMessage({ mine: true, from: myName, file: info, url: url, progress: true, time: Date.now() });
+
+      const id = uid();
+      const header = { t: 'file', id: id, name: info.name, size: info.size, mime: info.mime };
+      const buffer = await file.arrayBuffer();
+
+      let sentBytes = 0;
+      const totalBytes = Math.max(buffer.byteLength * targets.length, 1);
+
+      const results = await Promise.allSettled(targets.map(async handle => {
+        const channel = await getChannel(handle);
+        channel.send(header);
+
+        for (let offset = 0, index = 0; offset < buffer.byteLength; offset += CHUNK_SIZE, index++) {
+          // wait if too much data is already waiting to be sent
+          while (channel.dataChannel && channel.dataChannel.bufferedAmount > 1048576) {
+            await sleep(25);
+          }
+
+          const piece = buffer.slice(offset, offset + CHUNK_SIZE);
+          channel.send({ t: 'chunk', id: id, i: index, d: piece });
+
+          sentBytes += piece.byteLength;
+          item.setProgress(sentBytes / totalBytes);
+        }
+
+        channel.send({ t: 'end', id: id });
+      }));
+
+      const delivered = results.some(result => result.status === 'fulfilled');
+      item.complete(info);
+      item.setDelivery(delivered ? 'Delivered' : 'Not delivered', !delivered);
+    }
+
+    /* ---------- receiving files ---------- */
+    function receiveFileStart(from, message) {
+      const size = Number(message.size) || 0;
+      if (typeof message.id !== 'string' || size > MAX_FILE_MB * 1048576 * 1.1) return;
+
+      const info = {
+        kind: kindOf(message.mime),
+        name: String(message.name || 'file').slice(0, 120),
+        size: size,
+        mime: String(message.mime || 'application/octet-stream').slice(0, 100)
+      };
+
+      const item = addMessage({ mine: false, from: from, file: info, progress: true, time: Date.now() });
+
+      incomingFiles.set(from + ':' + message.id, { info: info, parts: [], received: 0, item: item });
+    }
+
+    function receiveFileChunk(from, message) {
+      const record = incomingFiles.get(from + ':' + message.id);
+      if (!record || !message.d) return;
+
+      record.parts.push(message.d);
+      record.received += message.d.byteLength;
+      record.item.setProgress(record.info.size ? record.received / record.info.size : 0);
+    }
+
+    function receiveFileEnd(from, message) {
+      const key = from + ':' + message.id;
+      const record = incomingFiles.get(key);
+      if (!record) return;
+
+      incomingFiles.delete(key);
+
+      const blob = new Blob(record.parts, { type: record.info.mime });
+      const url = URL.createObjectURL(blob);
+      fileUrls.push(url);
+
+      const file = Object.assign({}, record.info, { url: url });
+      record.item.complete(file);
+
+      const words = { image: 'a photo', video: 'a video', file: 'a file' };
+      notifyChat(from, 'sent ' + words[file.kind]);
+    }
+
+    /* ---------- photo viewer ---------- */
+    function openViewer(file) {
+      $('viewerImg').src = file.url;
+      $('viewerSave').href = file.url;
+      $('viewerSave').download = file.name;
+      $('viewer').classList.add('show');
+    }
+
+    function closeViewer() {
+      $('viewer').classList.remove('show');
+      $('viewerImg').removeAttribute('src');
+    }
+
+    $('viewerClose').onclick = closeViewer;
+    $('viewer').addEventListener('click', event => {
+      if (event.target === $('viewer')) closeViewer();
+    });
+
+    /* ---------- message box ---------- */
+    function growInput() {
+      const box = $('chatInput');
+      box.style.height = 'auto';
+      box.style.height = Math.min(box.scrollHeight, 120) + 'px';
+      $('composer').classList.toggle('has-text', box.value.trim().length > 0);
+    }
+
+    $('chatInput').addEventListener('input', growInput);
+
+    $('chatInput').addEventListener('keydown', event => {
+      // laptop: Enter sends, Shift+Enter makes a new line. Phone: Enter is a new line.
+      if (event.key === 'Enter' && !event.shiftKey && window.matchMedia('(pointer: fine)').matches) {
+        event.preventDefault();
+        sendText();
+      }
+    });
+
+    $('composer').addEventListener('submit', event => {
+      event.preventDefault();
+      sendText();
+    });
+
+    $('attachBtn').onclick = () => $('filePick').click();
+
+    $('filePick').addEventListener('change', event => {
+      Array.from(event.target.files).forEach(file => sendFile(file));
+      event.target.value = '';
+    });
+
+    // clear everything when a new call starts or the call ends
+    function resetChat() {
+      $('msgs').innerHTML = '';
+      $('chat').classList.remove('show');
+      $('chatInput').value = '';
+      growInput();
+      closeViewer();
+      fitChat();
+
+      chat.unread = 0;
+      chat.lastTime = 0;
+      chat.last = null;
+      chat.delivery = null;
+      updateBadge();
+
+      incomingFiles.clear();
+      fileUrls.splice(0).forEach(url => URL.revokeObjectURL(url));
+    }
+
+    $('chatInput').placeholder = 'Message';
+
+
+    /* =========================================================
        ENDING A CALL
        ========================================================= */
     function endCall(remoteClosed) {
       stopTone();
+      clearTimeout(hideTimer);
 
       Array.from(calls.values()).forEach(conn => {
         try { conn.close(); } catch (e) { /* ignore */ }
       });
       calls.clear();
+
+      datas.forEach(channel => {
+        try { channel.close(); } catch (e) { /* ignore */ }
+      });
+      datas.clear();
+      expected.clear();
 
       tiles.forEach(tile => tile.remove());
       tiles.clear();
@@ -1880,8 +3186,9 @@
       }
 
       $('local').srcObject = null;
-      $('call').classList.remove('show');
-      closeAdd();
+      $('call').classList.remove('show', 'hide-ui');
+      $('addSheet').classList.remove('show');
+      resetChat();
 
       if (pending) {
         pending = null;
@@ -1915,6 +3222,15 @@
 
     $('flipBtn').onclick = flipCamera;
     $('hangBtn').onclick = () => endCall(false);
+
+    // Esc closes the photo viewer, the chat, or the add sheet
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+
+      if ($('viewer').classList.contains('show')) closeViewer();
+      else if (isChatOpen()) closeChat();
+      else if ($('addSheet').classList.contains('show')) closeAdd();
+    });
 
 
     /* =========================================================
